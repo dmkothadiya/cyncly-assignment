@@ -1,0 +1,10 @@
+project_name reporting_month  deployment_count  change_failure_rate  mean_time_to_restore_hours
+   Project A         2024-07                 2                  0.0                    0.000000
+   Project A         2024-08                10                  0.3                    2.033333
+   Project A         2024-09                 1                  0.0                    0.000000
+   Project B         2024-07                23                  0.0                    8.250000
+   Project B         2024-08                 5                  0.0                    0.250000
+   Project B         2024-09               140                  0.0                    0.000000
+   Project B         2024-10                56                  0.0                   17.750000
+   Project B         2024-11                75                  0.0                    0.000000
+   Project B         2024-12                35                  0.0                    0.000000
