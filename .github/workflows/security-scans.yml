@@ -19,34 +19,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  codeql:
-    name: CodeQL SAST
-    runs-on: ubuntu-latest
-    permissions:
-      actions: read
-      contents: read
-      security-events: write
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-
-      - name: Setup .NET 8
-        uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
-        with:
-          dotnet-version: '8.0.x'
-
-      - name: Initialize CodeQL
-        uses: github/codeql-action/init@4bfa242aa49c5f7c6770b98670d354a7dfac05f8
-        with:
-          languages: csharp
-
-      - name: Build .NET solution for analysis
-        uses: github/codeql-action/autobuild@4bfa242aa49c5f7c6770b98670d354a7dfac05f8
-
-      - name: Analyze
-        uses: github/codeql-action/analyze@4bfa242aa49c5f7c6770b98670d354a7dfac05f8
-
   nuget-audit:
     name: NuGet vulnerability audit
     runs-on: ubuntu-latest

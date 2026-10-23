@@ -80,7 +80,7 @@ The repository includes:
 
 The workflow runs on pull requests and pushes to `main`, restores dependencies, builds in Release mode, runs tests, generates coverage, and uploads artifacts. The reusable composite action ensures the same .NET bootstrap is used consistently across jobs.
 
-The separate security workflow runs CodeQL SAST on pull requests, pushes to `main`, and weekly; NuGet Audit checks direct and transitive packages and treats audit-service errors or vulnerability advisories as failures; Dependency Review rejects newly introduced high-or-critical severity dependency vulnerabilities on PRs. External actions are pinned to full commit SHAs. CodeQL results require GitHub code scanning to be available and enabled for the repository.
+The separate security workflow runs NuGet Audit and Dependency Review; repository-level CodeQL default setup provides C# SAST. The workflow does not run a second advanced CodeQL upload because GitHub rejects simultaneous default and advanced CodeQL configurations. NuGet Audit checks direct and transitive packages and treats audit-service errors or vulnerability advisories as failures; Dependency Review rejects newly introduced high-or-critical severity dependency vulnerabilities on PRs. External actions are pinned to full commit SHAs.
 
 ## Permissions and secrets
 

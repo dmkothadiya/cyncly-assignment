@@ -38,9 +38,6 @@
             "context": "Build, test, and coverage"
           },
           {
-            "context": "CodeQL SAST"
-          },
-          {
             "context": "NuGet vulnerability audit"
           },
           {
