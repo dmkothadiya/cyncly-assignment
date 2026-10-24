@@ -14,7 +14,7 @@ and the exact build steps for the report.
 | TMDL semantic model (`DORA.SemanticModel/`, `DORA_Project/DORA.SemanticModel/`) | Generated from the actual Gold columns; structural self-check passes |
 | DAX measures | 14 measures, all column references verified against the model |
 | Report (`DORA_Project/DORA.pbip`) | **Generated and verified**: 19 visuals on 2 pages, 25/25 definition files schema-valid, all field references resolve, renders in Power BI Desktop |
-| Dashboard captures | `analytics/dashboard/dora_powerbi_desktop.png` and `dora_powerbi_lineage.png` are real Desktop screenshots; `dora_baseline_dashboard.png` is the earlier layout reference |
+| Dashboard captures | `analytics/dashboard/dora_powerbi_desktop.png` is a real Desktop screenshot of page 1; `analytics/dashboard/DORA_DASHBOARD.pbix` is the report saved from Desktop (2 pages, 19 visuals) |
 
 ### Report format: PBIP, not `.pbix`
 

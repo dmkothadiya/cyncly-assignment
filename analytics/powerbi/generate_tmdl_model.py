@@ -63,37 +63,73 @@ MEASURES = [
         "0.0",
     ),
     (
+        # The grain table is the report's filter surface, but relationships only flow
+        # from DimProject and DimDate into the facts, so selecting a project-month row
+        # never reaches FactCommitLink and the card keeps showing the period median.
+        # KEEPFILTERS(TREATAS(...)) pushes the selected project and month into the fact
+        # and *intersects* with any filter already there - without KEEPFILTERS it would
+        # override the month axis of the lead-time chart and every bar would read alike.
         "Lead Time for Changes (median h)",
         "CALCULATE ( MEDIAN ( FactCommitLink[lead_time_hours] ), "
-        "FactCommitLink[is_valid_lead_time] = TRUE () )",
+        "FactCommitLink[is_valid_lead_time] = TRUE (), "
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), '
+        'FactCommitLink[project_sk] ) ), '
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), '
+        'FactCommitLink[reporting_month] ) ) )',
         '0.0 "h"',
     ),
     (
         "Lead Time Sample",
-        "CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_valid_lead_time] = TRUE () )",
+        "CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_valid_lead_time] = TRUE (), "
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), '
+        'FactCommitLink[project_sk] ) ), '
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), '
+        'FactCommitLink[reporting_month] ) ) )',
         "#,0",
     ),
     (
+        # Every row in FactCommitLink already resolved to a build, so is_linkable is
+        # TRUE throughout. Gold publishes commit_link_coverage_pct as valid lead-time
+        # links over all links (149/152 = 98.03%). Bridging on the month would hide the
+        # three invalid links, which carry no reporting_month at all, and report 100% in
+        # every context, so coverage is deliberately bridged on project only.
         "Commit Link Coverage %",
-        "DIVIDE ( CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_linkable] = TRUE () ), "
-        "COUNTROWS ( FactCommitLink ) )",
+        "DIVIDE ( "
+        "CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_valid_lead_time] = TRUE (), "
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), '
+        'FactCommitLink[project_sk] ) ) ), '
+        "CALCULATE ( COUNTROWS ( FactCommitLink ), "
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), '
+        'FactCommitLink[project_sk] ) ) ) )',
         "0.0%",
     ),
     ("Change Failure Rate %", "DIVIDE ( [Failed Deployments], [Deployments] )", "0.00%"),
     (
         "Deployment Related Incidents",
-        "CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )",
+        "CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1, "
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), '
+        'FactIncident[project_sk] ) ), '
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), '
+        'FactIncident[reporting_month] ) ) )',
         "#,0",
     ),
     (
         "MTTR (median h)",
         "CALCULATE ( MEDIAN ( FactIncident[restore_hours] ), "
-        "FactIncident[caused_by_deployment] = 1 )",
+        "FactIncident[caused_by_deployment] = 1, "
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), '
+        'FactIncident[project_sk] ) ), '
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), '
+        'FactIncident[reporting_month] ) ) )',
         '0.0 "h"',
     ),
     (
         "MTTR Sample",
-        "CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )",
+        "CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1, "
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), '
+        'FactIncident[project_sk] ) ), '
+        'KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), '
+        'FactIncident[reporting_month] ) ) )',
         "#,0",
     ),
     (

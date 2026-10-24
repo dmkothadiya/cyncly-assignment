@@ -61,11 +61,12 @@ Verified on the authoring machine:
 | Every visual field reference resolves to a model column or measure | all resolve |
 | Project opens in Power BI Desktop | yes, window title `DORA`, no visual error on either page |
 | Cards match Gold after **Refresh now** | 38.33 / 20.5 h / 0.87% / 2.0 h |
+| Grain-row selection recomputes on the live model (`KEEPFILTERS(TREATAS(...))` bridge) | matches Gold row by row, blanks included |
 | Page 1 inventory | 12 visuals: navy header, title, subtitle, 4 KPI cards, deployment trend, lead-time column chart, 9-row grain table, caveat panel, footer |
 | Page 2 inventory | 7 visuals: header, title, subtitle, Bronze/Silver/Gold lineage table, data-quality table, all-column grain table, footer |
 
-The captured windows are `analytics/dashboard/dora_powerbi_desktop.png` (page 1) and
-`analytics/dashboard/dora_powerbi_lineage.png` (page 2).
+The captured window is `analytics/dashboard/dora_powerbi_desktop.png` (page 1); page 2
+is verified in the saved report `analytics/dashboard/DORA_DASHBOARD.pbix`.
 
 Three problems were found and fixed through this loop rather than assumed away:
 `Missing_References` on the Deployment Frequency card and the lead-time chart
@@ -120,6 +121,44 @@ Fixed by giving the facts their own date columns and relationships:
 `verify_solution.py` now asserts that all four facts have a date column related to
 `DimDate` and that the lead-time chart's axis belongs to a table with a filter path to
 its measure.
+
+## Third defect found and fixed: the grain table did not drive the cards
+
+Selecting a row of *Published grain* refreshed the Deployment Frequency and Change
+Failure Rate cards but left Lead Time and MTTR frozen on their period values. Those two
+cards read `FactCommitLink` and `FactIncident` directly, and no relationship leads from
+`DoraServiceMonth` into either fact, so the selection never arrived.
+
+The fix translates the selected grain row into a filter on the fact:
+
+```
+CALCULATE ( MEDIAN ( FactCommitLink[lead_time_hours] ),
+    FactCommitLink[is_valid_lead_time] = TRUE (),
+    KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactCommitLink[project_sk] ) ),
+    KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), FactCommitLink[reporting_month] ) ) )
+```
+
+A bare `TREATAS` was tried first and is wrong: it replaces the visual's own filter, so
+all four lead-time columns printed the period median. `KEEPFILTERS` makes the
+translated filter intersect instead, which keeps both behaviours.
+
+Verified against the live model rather than by eye, by running the row's filter context
+through the Power BI engine the Desktop had loaded (ADOMD on the local Analysis
+Services workspace, port read from `msmdsrv.port.txt`):
+
+| Filter applied to `DoraServiceMonth` | Freq | Lead Time | Lead n | CFR | MTTR | MTTR n |
+|---|---|---|---|---|---|---|
+| *(none)* | 38.33 | 20.49 h | 149 | 0.87% | 2.03 h | 3 |
+| Project A, 2024-08 | 10 | *(blank)* | *(blank)* | 30.0% | 2.03 h | 3 |
+| Project B, 2024-09 | 141 | 25.98 h | 14 | 0.0% | *(blank)* | *(blank)* |
+| Project B, 2024-10 | 55 | 0.58 h | 4 | 0.0% | *(blank)* | *(blank)* |
+| Project B, 2024-12 | 35 | 18.29 h | 77 | 0.0% | *(blank)* | *(blank)* |
+
+Every value matches the corresponding Gold grain row, including the blanks, which are
+the cards a reader will ask about. The same query group confirms the chart still
+separates the months - 25.98 / 0.58 / 22.19 / 18.29 h for 2024-09 to 2024-12 - so the
+bridge did not flatten the axis. `verify_solution.py` now asserts that every
+`TREATAS` in the grain table's measures is wrapped in `KEEPFILTERS` (14/14).
 
 ## Cross-check against the raw workbook
 

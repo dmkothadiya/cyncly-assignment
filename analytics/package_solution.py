@@ -33,7 +33,7 @@ source repository, so every script runs unmodified from the package root.
 | `analytics/gold/` | Facts, dimension, published metric grain, period summary |
 | `analytics/quality-checks/dq_results.json` | Latest check result |
 | `analytics/powerbi/` | Power BI project (`DORA_Project/`), Power Query, DAX measures, single-workbook data pack, TMDL semantic model, build guide |
-| `analytics/dashboard/` | `dora_powerbi_desktop.png` - real Power BI Desktop capture; `dora_baseline_dashboard.png` - layout reference |
+| `analytics/dashboard/` | `DORA_DASHBOARD.pbix` - report saved from Power BI Desktop (2 pages, 19 visuals); `dora_powerbi_desktop.png` - real Desktop capture |
 | `docs/METRIC_SPEC.md` | Grain, formulas, sources, rules, ownership, limitations |
 | `docs/DATA_QUALITY.md` | Quality rules and known defects |
 | `docs/DASHBOARD_VERIFICATION_GUIDE.md` | Step-by-step verification, expected values, troubleshooting |
@@ -51,7 +51,7 @@ python -m pip install -r requirements.txt
 python analytics/run_pipeline.py
 python analytics/quality-checks/run_quality_checks.py            # exit 0 = all pass
 python analytics/quality-checks/run_quality_checks.py --fixtures # negative test
-python analytics/verify_solution.py                          # 21 independent checks
+python analytics/verify_solution.py                          # 32 independent checks
 python analytics/verify_solution.py --pbix analytics/powerbi/DORA_DASHBOARD.pbix
 python analytics/powerbi/build_pbip.py
 python analytics/powerbi/validate_pbip.py
@@ -63,10 +63,11 @@ Verification steps and expected values: `docs/DASHBOARD_VERIFICATION_GUIDE.md`.
 ## Open in Power BI Desktop
 
 1. Run the pipeline so `analytics/gold` is populated.
-2. Open `analytics/powerbi/DORA_Project/DORA.pbip`.
+2. Open `analytics/powerbi/DORA_Project/DORA.pbip`, or the saved report
+   `analytics/dashboard/DORA_DASHBOARD.pbix`.
 3. Press **Refresh now** in the banner; the four cards must read
-   38.0 / 18.2 h / 0.88% / 2.0 h.
-4. **File -> Save as -> Power BI file (.pbix)** if you need a single-file report.
+   38.33 / 20.5 h / 0.87% / 2.0 h.
+4. **File -> Save as -> Power BI file (.pbix)** if you need to re-save a single-file report.
 
 The project is the authorable form: a PBIR report definition plus a TMDL semantic
 model, both plain text and both schema-validated. A `.pbix` is signed by Power BI
@@ -152,11 +153,14 @@ def stage() -> Path:
     if project_source.exists():
         shutil.copytree(project_source, analytics / "powerbi" / "DORA_Project")
 
-    for png_name in ("dora_baseline_dashboard.png", "dora_powerbi_desktop.png",
-                     "dora_powerbi_lineage.png"):
+    for png_name in ("dora_powerbi_desktop.png",):
         png = ANALYTICS / "dashboard" / png_name
         if png.exists():
             shutil.copy(png, analytics / "dashboard" / png_name)
+
+    pbix = ANALYTICS / "dashboard" / "DORA_DASHBOARD.pbix"
+    if pbix.exists():
+        shutil.copy(pbix, analytics / "dashboard" / "DORA_DASHBOARD.pbix")
 
     for name in ("METRIC_SPEC.md", "DATA_QUALITY.md", "METRIC_DICTIONARY.md",
                  "DASHBOARD_VERIFICATION_GUIDE.md"):

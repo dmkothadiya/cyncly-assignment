@@ -424,6 +424,20 @@ def check_pbip(report: Report) -> None:
         "period median in every month",
     )
 
+    # Relationships flow from DimProject/DimDate into the facts, so a selected grain row
+    # never reaches FactCommitLink or FactIncident. The measures bridge it with
+    # KEEPFILTERS(TREATAS(...)): a bare TREATAS replaces the visual's own filter and
+    # collapsed every lead-time bar to the period median, and no bridge at all leaves
+    # the cards frozen on the period median when a grain row is selected.
+    bridge_count = frequency.count("TREATAS")
+    guarded_count = frequency.count("KEEPFILTERS ( TREATAS")
+    report.add(
+        "Grain row selection reaches the fact measures",
+        bridge_count > 0 and bridge_count == guarded_count,
+        f"{guarded_count}/{bridge_count} TREATAS bridges are wrapped in KEEPFILTERS, so a "
+        "grain row filters the cards without overriding the chart axis",
+    )
+
 
 def check_pbix(report: Report, path: Path) -> None:
     """Inspect a saved .pbix, including the modern PBIR layout.
@@ -496,15 +510,31 @@ def check_pbix(report: Report, path: Path) -> None:
             "DORA.Report/definition/pages/*/visuals/*/visual.json")
     }
     differing = [vid for vid, doc in project_visuals.items()
-                 if vid in saved and saved[vid] != doc]
+                 if vid in saved and _canonical(saved[vid]) != _canonical(doc)]
     absent = [vid for vid in project_visuals if vid not in saved]
     report.add(
         "Saved .pbix matches the current project",
         not differing and not absent,
-        "identical to DORA_Project" if not differing and not absent
+        "same visual definitions as DORA_Project" if not differing and not absent
         else f"{len(differing)} visual(s) differ and {len(absent)} are missing - "
              "reopen the .pbip and save again",
     )
+
+
+def _canonical(node):
+    """Drop the churn Power BI Desktop adds when it re-serialises a report.
+
+    Desktop rewrites `$schema` to the version it ships, marks one projection
+    `active`, and injects theme/resource blocks. None of that changes what the
+    report displays, so comparing it would flag staleness after every plain save.
+    """
+    if isinstance(node, dict):
+        return {key: _canonical(value) for key, value in node.items()
+                if key not in {"$schema", "active", "resourcePackages", "settings",
+                               "themeCollection"}}
+    if isinstance(node, list):
+        return [_canonical(item) for item in node]
+    return node
 
 
 def _page_of(visual_paths: list[str], visual_id: str) -> str:

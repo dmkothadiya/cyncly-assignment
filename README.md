@@ -58,7 +58,7 @@ Outputs are generated in:
 | `analytics/silver/` | Typed, validated, deduplicated tables and `rejected_rows.csv` |
 | `analytics/gold/` | `dim_project`, three facts, `dora_service_month` (grain), `dora_period_summary` |
 | `analytics/quality-checks/` | `dq_results.json`, `silver_profile.json` |
-| `analytics/dashboard/` | `dora_baseline_dashboard.png` layout reference |
+| `analytics/dashboard/` | `DORA_DASHBOARD.pbix` - saved single-file report (2 pages, 19 visuals) |
 
 The published grain is **project x calendar month**. All four DORA metrics are
 computed: deployment frequency, lead time for changes, change failure rate and mean
@@ -105,16 +105,18 @@ python analytics/powerbi/build_pbip.py              # PBIR report + project
 python analytics/powerbi/validate_pbip.py           # schemas + field references
 ```
 
-`analytics/dashboard/dora_powerbi_desktop.png` is a real screenshot of this project
-open in Power BI Desktop, showing 38.33 / 20.5 h / 0.87% / 2.0 h.
-`analytics/dashboard/dora_baseline_dashboard.png` is the earlier layout reference
-rendered from the same Gold numbers - useful for comparison, not a Desktop capture.
+`analytics/dashboard/DORA_DASHBOARD.pbix` is that report saved from Power BI Desktop
+(**File → Save as → Power BI file (\*.pbix)**): 2 pages, 19 visuals, cards reading
+38.33 / 20.5 h / 0.87% / 2.0 h.
+`analytics/dashboard/dora_powerbi_desktop.png` is a real screenshot of it open in
+Desktop.
 
 **About the `.pbix`:** a `.pbix` package is signed when Desktop writes it, so it
 cannot be produced or edited by hand - repacking one fails with "This file is
-corrupted or was created by an unrecognized version". The project above is the
-authorable equivalent; **File → Save as → Power BI file (\*.pbix)** produces the
-single-file report from it.
+corrupted or was created by an unrecognized version". The PBIP project above is
+therefore kept as the authorable, reviewable equivalent; the committed `.pbix` is a
+save from that project, so re-save it in Desktop after changing the model rather
+than editing the binary.
 
 ## Dashboard verification
 

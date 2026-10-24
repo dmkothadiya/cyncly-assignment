@@ -232,11 +232,12 @@ Desktop. Everything both pages need is already authored: 19 visuals, 8 tables,
 7. **File → Save as → Power BI file (\*.pbix)** to produce the single-file dashboard,
    then verify it with the command in Step 8.
 
-The rendered pages are captured in
-[`analytics/dashboard/dora_powerbi_desktop.png`](../analytics/dashboard/dora_powerbi_desktop.png)
-and [`dora_powerbi_lineage.png`](../analytics/dashboard/dora_powerbi_lineage.png) -
-those images are real screenshots of Power BI Desktop showing this project, not
-mock-ups.
+Page 1 is captured in
+[`analytics/dashboard/dora_powerbi_desktop.png`](../analytics/dashboard/dora_powerbi_desktop.png) -
+a real screenshot of Power BI Desktop showing this project, not a mock-up. Page 2 is
+verifiable in the saved report
+[`analytics/dashboard/DORA_DASHBOARD.pbix`](../analytics/dashboard/DORA_DASHBOARD.pbix),
+which holds both pages and all 19 visuals.
 
 What is already proven for this route (see `docs/VALIDATION_EVIDENCE.md`):
 
@@ -352,8 +353,8 @@ change failure rate `0.00%`, MTTR `0.0 "h"`.
 **7.5 Build the page**
 
 Report view. **View → Page view → Actual size**, then **Format page → Canvas settings
-→ 16:9** (1280 x 720). The reference image
-`analytics/dashboard/dora_baseline_dashboard.png` is 1600 x 900 - the same ratio.
+→ 16:9** (1280 x 720) - the canvas the generated report and the saved
+`analytics/dashboard/DORA_DASHBOARD.pbix` use.
 
 **7.5.1 Load the theme (optional, sets the colours once)**
 
@@ -510,7 +511,7 @@ The report is wrong until every line matches:
 | Card | Change Failure Rate % | **0.87%** | failed incidents joined to the wrong table |
 | Card | MTTR (median h) | **2.0 h** | incidents not filtered to `caused_by_deployment = 1` |
 | Line chart | points per month | 6 months, 2 series | month axis is text, not a date |
-| Column chart | bars | 6 bars, one per month (2024-07 to 2024-12) | month axis came through as text, or the valid-flag filter dropped rows |
+| Column chart | bars | 4 bars, 2024-09 to 2024-12, at **26.0 / 0.6 / 22.2 / 18.3 h** | month axis came through as text, or the valid-flag filter dropped rows; every bar reading the same value means the measures override the axis filter instead of intersecting it |
 | Grain table | rows | 9 rows, Builds column totals **345** | grain duplicated, or a rate column summed |
 | Header / footer text | derived from Gold | 345 and "3/3 data-quality checks passed" | the project computes these, so a stale value means Gold is stale |
 | *(optional)* Matrix | project x month | 9 populated cells, total **345** | relationship missing or many-to-many |
@@ -520,12 +521,29 @@ The report is wrong until every line matches:
 The reference image has no slicers - add them only if you want to demonstrate filter
 propagation during a review; they are the fastest way to prove the relationships work.
 
-Two manual checks worth doing once:
+Three manual checks worth doing once:
 
 - **Blank, not zero.** Filter the matrix to Project B, 2024-09. MTTR must be blank,
   never 0. A zero means something is filling gaps.
 - **Context propagates.** With no slicer, `Deployments` = 345; select Project A and it
   must fall to 13 (2 + 10 + 1). If it stays 345, the relationships are missing.
+- **The grain table drives the cards.** Select one row of *Published grain* and read the
+  four cards. Only the two grain cards (frequency, failure rate) read the grain table
+  directly; Lead Time and MTTR live in separate fact tables that no relationship
+  reaches from the grain, so this check is what proves the `KEEPFILTERS(TREATAS(...))`
+  bridge is intact.
+
+| Row selected | Deployment Frequency | Lead Time | CFR | MTTR |
+|---|---|---|---|---|
+| Project A 2024-08 | 10 | *(blank - no commits)* | 30.0% | 2.0 h |
+| Project B 2024-09 | 141 | 26.0 h | 0.0% | *(blank - no incident)* |
+| Project B 2024-10 | 55 | 0.6 h | 0.0% | *(blank)* |
+| Project B 2024-12 | 35 | 18.3 h | 0.0% | *(blank)* |
+
+Clearing the selection must return the cards to 38.3 / 20.5 h / 0.87% / 2.0 h. If the
+cards never move, the measures lost the bridge and every card is showing the period
+total; if the lead-time chart shows the same value in all four columns, the bridge
+uses a bare `TREATAS` instead of `KEEPFILTERS ( TREATAS ( ... ) )`.
 
 ---
 

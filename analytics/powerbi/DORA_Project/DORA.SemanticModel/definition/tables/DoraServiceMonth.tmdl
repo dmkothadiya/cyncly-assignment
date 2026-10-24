@@ -272,15 +272,15 @@ table DoraServiceMonth
 		lineageTag: b18cd233-b5e0-5e3b-9672-a47458c30c00
 		formatString: 0.0
 
-	measure 'Lead Time for Changes (median h)' = CALCULATE ( MEDIAN ( FactCommitLink[lead_time_hours] ), FactCommitLink[is_valid_lead_time] = TRUE () )
+	measure 'Lead Time for Changes (median h)' = CALCULATE ( MEDIAN ( FactCommitLink[lead_time_hours] ), FactCommitLink[is_valid_lead_time] = TRUE (), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactCommitLink[project_sk] ) ), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), FactCommitLink[reporting_month] ) ) )
 		lineageTag: aed6cf63-7001-5096-9288-1596e0bdaa35
 		formatString: 0.0 "h"
 
-	measure 'Lead Time Sample' = CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_valid_lead_time] = TRUE () )
+	measure 'Lead Time Sample' = CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_valid_lead_time] = TRUE (), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactCommitLink[project_sk] ) ), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), FactCommitLink[reporting_month] ) ) )
 		lineageTag: b2c84af3-192a-5746-a33c-1d00dc9a5821
 		formatString: #,0
 
-	measure 'Commit Link Coverage %' = DIVIDE ( CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_linkable] = TRUE () ), COUNTROWS ( FactCommitLink ) )
+	measure 'Commit Link Coverage %' = DIVIDE ( CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_valid_lead_time] = TRUE (), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactCommitLink[project_sk] ) ) ), CALCULATE ( COUNTROWS ( FactCommitLink ), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactCommitLink[project_sk] ) ) ) )
 		lineageTag: 13fe59ab-1b94-5729-92cd-2ebe19437f22
 		formatString: 0.0%
 
@@ -288,15 +288,15 @@ table DoraServiceMonth
 		lineageTag: ca9f5dcc-1732-5212-a360-389877f0cc64
 		formatString: 0.00%
 
-	measure 'Deployment Related Incidents' = CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )
+	measure 'Deployment Related Incidents' = CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1, KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactIncident[project_sk] ) ), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), FactIncident[reporting_month] ) ) )
 		lineageTag: 738ff983-74e6-5773-a5c9-2e07fad76cae
 		formatString: #,0
 
-	measure 'MTTR (median h)' = CALCULATE ( MEDIAN ( FactIncident[restore_hours] ), FactIncident[caused_by_deployment] = 1 )
+	measure 'MTTR (median h)' = CALCULATE ( MEDIAN ( FactIncident[restore_hours] ), FactIncident[caused_by_deployment] = 1, KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactIncident[project_sk] ) ), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), FactIncident[reporting_month] ) ) )
 		lineageTag: ae9b3b88-658f-580e-9aff-82214ec22f61
 		formatString: 0.0 "h"
 
-	measure 'MTTR Sample' = CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )
+	measure 'MTTR Sample' = CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1, KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ), FactIncident[project_sk] ) ), KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[reporting_month] ), FactIncident[reporting_month] ) ) )
 		lineageTag: c59d37a7-0b5d-5bbd-9f65-3a38c2e60512
 		formatString: #,0
 

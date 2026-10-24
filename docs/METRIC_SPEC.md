@@ -122,6 +122,35 @@ heavy-tailed: in this dataset lead time ranges from 0.2 h to 311 h.
 
 ---
 
+## 2b. Reading the metrics in the report
+
+`DoraServiceMonth` is the published grain and the report's filter surface: the grain
+table lists one row per project x month, and selecting a row must refresh every card
+on the page.
+
+That does not happen on its own. Relationships flow one way, from `DimProject` and
+`DimDate` into the facts, so a filter on `DoraServiceMonth` never reaches
+`FactCommitLink` or `FactIncident` by relationship. The four cards therefore push the
+selected project and month into the facts explicitly:
+
+```
+KEEPFILTERS ( TREATAS ( VALUES ( DoraServiceMonth[project_sk] ),
+                        FactCommitLink[project_sk] ) )
+```
+
+`KEEPFILTERS` is not decoration. A bare `TREATAS` would replace whatever filter the
+visual already applied, so the lead-time chart would print the period median in every
+month column. Wrapped in `KEEPFILTERS` the translated filter *intersects* with the
+axis filter, and both behaviours hold at once: a grain row drives the cards, and each
+month column keeps its own value.
+
+Consequence for readers: a selected row can legitimately blank a card. Project A,
+2024-08 has 10 builds and one deployment-caused incident but no commits, so Lead Time
+is blank and MTTR is 2.0 h. Project B, 2024-09 is the mirror image: Lead Time 26.0 h,
+MTTR blank. Blank means not observed - never zero.
+
+---
+
 ## 3. Transformation rules
 
 1. **Bronze is lossless.** Raw sheets are copied with original values and text
