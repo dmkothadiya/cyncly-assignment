@@ -130,7 +130,8 @@ Page size 16:9, background `#FFFFFF`, header band `#16324F`.
 
 Formatting rules:
 
-- Conditional formatting on `Data Quality Status`: `Validated` -> green
+- Conditional formatting on `Data Quality Status`: `complete` -> green, `partial` ->
+  amber, `minimal` -> grey. Pair it with `status_reason` so a reader sees the why.
   `#1E6B4E`, anything else -> amber `#8A5A00`.
 - Show the sample-size note on the same page as the KPI cards, always. A metric
   without its `n` invites the argument you are trying to end.

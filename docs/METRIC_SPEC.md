@@ -17,6 +17,8 @@ baseline, not a scorecard.
 | Table | Grain | Rows in current data |
 |---|---|---|
 | `dora_service_month` | `project_sk` x `reporting_month` | 9 |
+| `pipeline_lineage` | `layer` x `table_name` - Bronze/Silver/Gold row counts | 15 |
+| `dq_check_results` | one row per executable quality check | 3 |
 | `fact_deployment` | one row per completed build run | 345 |
 | `fact_commit_link` | one row per commit-to-build association (`commit_id` x `deployment_id`) | 152 |
 | `fact_incident` | one row per work item | 11 |
@@ -84,6 +86,37 @@ than once. That is the true grain of the source, not a duplicate.
 | Published column | `mttr_median_hours`, `mttr_sample_size` |
 | Limitation | Blank when no deployment-caused incident exists in the window. Blank means **not observed**, never zero. Only 3 qualifying incidents exist, so the median is indicative only. |
 
+#### Companion column - all-cause incident recovery
+
+`mttr_all_incidents_hours` / `mttr_all_incidents_sample` repeat the same calculation
+over **every** incident, including the 8 not flagged `caused_by_deployment`.
+
+| Item | Definition |
+|---|---|
+| Why it exists | DORA MTTR is only defined for failed deployments, so it is blank in 8 of 9 project-months. Reliability readers still need a recovery number. |
+| Status | **Not the DORA metric.** Never quote it as MTTR in a DORA context. |
+| Bound | Must never feed `data_quality_status`, `metrics_observed` or any DORA card. |
+
+## 2a. Observation status per row
+
+Three columns state how much of the metric set a row actually supports. They exist
+because a blank cell alone does not tell a reader whether evidence is missing or the
+pipeline is broken.
+
+| Column | Values | Meaning |
+|---|---|---|
+| `lead_time_status` | `observed`, `below_threshold`, `not_observed` | `below_threshold` when fewer than 5 observations support the median |
+| `mttr_status` | `observed`, `not_observed` | deployment-caused incidents only |
+| `metrics_observed` | 2 to 4 | deployments and failure rate are always computable; lead time and MTTR add one each |
+| `data_quality_status` | `complete`, `partial`, `minimal` | 4, 3 or 2 metrics observed |
+| `status_reason` | text | names the missing evidence and why it cannot exist |
+
+`complete` is currently unreachable, and that is a property of the source, not a
+defect: the only project-month with a deployment-caused incident (Project A, 2024-08)
+has no commits, and the project-months with commits (Project B, 2024-09 to 2024-12)
+have no deployment-caused incident. No row can hold both.
+
+
 Median rather than mean is used for LTFC and MTTR because both distributions are
 heavy-tailed: in this dataset lead time ranges from 0.2 h to 311 h.
 
@@ -138,6 +171,13 @@ metric may not be redefined inside a dashboard.
 | 5 | Only 3 deployment-caused incidents exist and all have an identical restore time of 2.03 h | MTTR is not statistically meaningful | Published with `mttr_sample_size`; flagged |
 | 6 | Same commit appears with different `author_date` values across snapshots | Ambiguity in "true" commit time | Latest ingestion wins; documented, not hidden |
 | 7 | No environment, release or deployment-event column | Deployment frequency and CFR are proxies | Stated on every report page |
+| 8 | The `commits` sheet contains rows for **one** project only; Project A's 13 builds have no commit anywhere in the source | Lead time can never be computed for Project A | `lead_time_status = not_observed`; `status_reason` says the project has no commit |
+| 9 | Project B's builds in 2024-07 and 2024-08 have no linked commit either | Lead time starts in 2024-09 | Same treatment; reason distinguishes "no commit for the project" from "no link this month" |
+
+Rows 8 and 9 are the reason 4 of 9 project-months report `minimal`: deployment count
+and failure rate are computable, lead time and MTTR have no evidence behind them. No
+amount of pipeline work produces those numbers - the linkage has to be captured at
+source.
 
 These are properties of the supplied workbook, not of the pipeline. Fixing them
 requires a source-system change: emit deployment events with environment,

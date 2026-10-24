@@ -181,7 +181,9 @@ Proposed enterprise design:
 
 Assumption and limitation:
 
-- The source workbook does not contain an explicit commit-to-deployment join key, so lead time for changes is recorded as unavailable rather than inferred.
+- The source workbook does not contain an explicit commit-to-deployment join key, so
+  lead time is derived from the commit-to-build association. Project A has no commits
+  at all in the source, so its lead time is `not_observed` rather than inferred.
 - Report publishing and sharing permissions depend on the organization's Power BI licensing and tenant configuration.
 
 ## Relevant locations

@@ -53,36 +53,6 @@
                       "Entity": "DoraServiceMonth"
                     }
                   },
-                  "Property": "grain"
-                }
-              },
-              "queryRef": "DoraServiceMonth.grain",
-              "nativeQueryRef": "grain",
-              "displayName": "Grain"
-            },
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "DoraServiceMonth"
-                    }
-                  },
-                  "Property": "days_in_month"
-                }
-              },
-              "queryRef": "DoraServiceMonth.days_in_month",
-              "nativeQueryRef": "days_in_month",
-              "displayName": "Days"
-            },
-            {
-              "field": {
-                "Column": {
-                  "Expression": {
-                    "SourceRef": {
-                      "Entity": "DoraServiceMonth"
-                    }
-                  },
                   "Property": "deployment_count"
                 }
               },
@@ -143,12 +113,12 @@
                       "Entity": "DoraServiceMonth"
                     }
                   },
-                  "Property": "lead_time_available"
+                  "Property": "lead_time_status"
                 }
               },
-              "queryRef": "DoraServiceMonth.lead_time_available",
-              "nativeQueryRef": "lead_time_available",
-              "displayName": "Lead obs?"
+              "queryRef": "DoraServiceMonth.lead_time_status",
+              "nativeQueryRef": "lead_time_status",
+              "displayName": "Lead status"
             },
             {
               "field": {
@@ -218,12 +188,42 @@
                       "Entity": "DoraServiceMonth"
                     }
                   },
-                  "Property": "mttr_available"
+                  "Property": "mttr_status"
                 }
               },
-              "queryRef": "DoraServiceMonth.mttr_available",
-              "nativeQueryRef": "mttr_available",
-              "displayName": "MTTR obs?"
+              "queryRef": "DoraServiceMonth.mttr_status",
+              "nativeQueryRef": "mttr_status",
+              "displayName": "MTTR status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "mttr_all_incidents_hours"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_all_incidents_hours",
+              "nativeQueryRef": "mttr_all_incidents_hours",
+              "displayName": "All-cause h"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "mttr_all_incidents_sample"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_all_incidents_sample",
+              "nativeQueryRef": "mttr_all_incidents_sample",
+              "displayName": "All-cause n"
             },
             {
               "field": {
@@ -248,12 +248,42 @@
                       "Entity": "DoraServiceMonth"
                     }
                   },
+                  "Property": "metrics_observed"
+                }
+              },
+              "queryRef": "DoraServiceMonth.metrics_observed",
+              "nativeQueryRef": "metrics_observed",
+              "displayName": "Observed"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
                   "Property": "data_quality_status"
                 }
               },
               "queryRef": "DoraServiceMonth.data_quality_status",
               "nativeQueryRef": "data_quality_status",
               "displayName": "Status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "status_reason"
+                }
+              },
+              "queryRef": "DoraServiceMonth.status_reason",
+              "nativeQueryRef": "status_reason",
+              "displayName": "What is missing, and why"
             }
           ]
         }
@@ -288,6 +318,34 @@
           }
         ]
       }
+    },
+    "objects": {
+      "values": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "7D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "columnHeaders": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "7D"
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "visualContainerObjects": {
       "title": [

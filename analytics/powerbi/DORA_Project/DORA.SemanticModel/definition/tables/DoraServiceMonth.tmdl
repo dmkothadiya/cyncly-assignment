@@ -81,6 +81,14 @@ table DoraServiceMonth
 
 		annotation SummarizationSetBy = Automatic
 
+	column lead_time_status
+		dataType: string
+		lineageTag: acf9066a-22d1-5ff3-9edd-2fa5e90384f3
+		summarizeBy: none
+		sourceColumn: lead_time_status
+
+		annotation SummarizationSetBy = Automatic
+
 	column failed_deployments
 		dataType: int64
 		lineageTag: 57fa247a-da58-538b-a081-7cf6e87e907f
@@ -121,6 +129,30 @@ table DoraServiceMonth
 
 		annotation SummarizationSetBy = Automatic
 
+	column mttr_status
+		dataType: string
+		lineageTag: dcc905b3-ef2c-5e31-9299-82420b82580d
+		summarizeBy: none
+		sourceColumn: mttr_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column mttr_all_incidents_hours
+		dataType: double
+		lineageTag: 94b08f7b-0d20-5ad5-8d4b-57b1bcc8bc84
+		summarizeBy: none
+		sourceColumn: mttr_all_incidents_hours
+
+		annotation SummarizationSetBy = Automatic
+
+	column mttr_all_incidents_sample
+		dataType: double
+		lineageTag: 4601aee8-d727-59b4-a271-d46fd6e622d3
+		summarizeBy: none
+		sourceColumn: mttr_all_incidents_sample
+
+		annotation SummarizationSetBy = Automatic
+
 	column median_build_minutes
 		dataType: double
 		lineageTag: f572d69a-af12-55f1-b9eb-2878bcaf8d15
@@ -129,11 +161,27 @@ table DoraServiceMonth
 
 		annotation SummarizationSetBy = Automatic
 
+	column metrics_observed
+		dataType: int64
+		lineageTag: 4e1ca144-3e8a-515d-acef-de9cb330c8d1
+		summarizeBy: none
+		sourceColumn: metrics_observed
+
+		annotation SummarizationSetBy = Automatic
+
 	column data_quality_status
 		dataType: string
 		lineageTag: f5175470-90b2-5f76-b15a-2efbab105a53
 		summarizeBy: none
 		sourceColumn: data_quality_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column status_reason
+		dataType: string
+		lineageTag: 79011577-c5a2-56b3-86a3-ab0d9b4fe353
+		summarizeBy: none
+		sourceColumn: status_reason
 
 		annotation SummarizationSetBy = Automatic
 
@@ -183,13 +231,19 @@ table DoraServiceMonth
 								{"lead_time_median_hours", type number},
 								{"lead_time_sample_size", Int64.Type},
 								{"lead_time_available", type logical},
+								{"lead_time_status", type text},
 								{"failed_deployments", Int64.Type},
 								{"change_failure_rate_pct", type number},
 								{"mttr_median_hours", type number},
 								{"mttr_sample_size", Int64.Type},
 								{"mttr_available", type logical},
+								{"mttr_status", type text},
+								{"mttr_all_incidents_hours", type number},
+								{"mttr_all_incidents_sample", type number},
 								{"median_build_minutes", type number},
+								{"metrics_observed", Int64.Type},
 								{"data_quality_status", type text},
+								{"status_reason", type text},
 								{"notes", type text}
 							}
 						),

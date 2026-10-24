@@ -54,6 +54,13 @@
                       "fontSize": "8pt",
                       "color": "#1A202C"
                     }
+                  },
+                  {
+                    "value": "\n- 'minimal' means only deployments and failure rate could be computed. Page 2 says why, per row.",
+                    "textStyle": {
+                      "fontSize": "8pt",
+                      "color": "#1A202C"
+                    }
                   }
                 ],
                 "horizontalTextAlignment": "left"

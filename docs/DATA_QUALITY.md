@@ -46,7 +46,7 @@ personal data; author and committer names and e-mails are dropped from every Sil
 and Gold table.
 
 **Gold** publishes the metric grain, the facts behind it, and a per-row status of
-`validated`, `partial` or `unavailable`.
+`complete`, `partial` or `minimal`, with a per-row `status_reason`.
 
 ## Defects found in the supplied data
 
@@ -62,6 +62,11 @@ and Gold table.
 ## Interpreting the output
 
 - A blank metric means not observed in that project-month. Never read it as zero.
+- `data_quality_status` is `complete` (4 of 4 metrics), `partial` (3) or `minimal` (2:
+  only deployment count and failure rate). `status_reason` names the missing evidence
+  and why it cannot exist, so a blank is never mistaken for a broken pipeline.
+- `mttr_all_incidents_hours` is all-cause incident recovery, **not** the DORA MTTR.
+  It exists so reliability readers have a number where DORA MTTR is undefined.
 - `mttr_sample_size = 3` across the whole period. Any MTTR statement beyond
   "roughly two hours in this dataset" overstates the evidence.
 - A rising DQ-01 link count is a signal about source data, not about the check.

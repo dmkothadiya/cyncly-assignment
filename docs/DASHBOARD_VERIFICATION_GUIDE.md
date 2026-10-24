@@ -227,7 +227,8 @@ Desktop. Everything both pages need is already authored: 19 visuals, 8 tables,
 5. Check the lead-time chart: it must show **four** bars (2024-09 to 2024-12), not six
    identical ones. Six equal bars means a monthly visual lost its filter path.
 6. Open the second page, **Grain, lineage & quality**: the Bronze/Silver/Gold table,
-   the three DQ results and all 16 published columns are there.
+   the three DQ results and all 18 published columns are there, including
+  `status_reason`, which names the evidence missing from each row.
 7. **File → Save as → Power BI file (\*.pbix)** to produce the single-file dashboard,
    then verify it with the command in Step 8.
 

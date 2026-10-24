@@ -274,6 +274,7 @@ def build_baseline_visuals() -> list[dict]:
         "- Change failure rate matches incidents to the project-month, not to a specific deployment.",
         "- MTTR rests on 3 incidents; treat as indicative.",
         "- Blank means not observed. It is never zero.",
+        "- 'minimal' means only deployments and failure rate could be computed. Page 2 says why, per row.",
     ):
         caveat_runs.append({"value": "\n" + line,
                             "textStyle": {"fontSize": "8pt", "color": "#1A202C"}})
@@ -341,20 +342,22 @@ def build_governance_visuals() -> list[dict]:
     full_grain = [
         ("project_name", "Project"),
         ("reporting_month", "Month"),
-        ("grain", "Grain"),
-        ("days_in_month", "Days"),
         ("deployment_count", "Builds"),
         ("deployment_frequency_per_day", "DF / day"),
         ("lead_time_median_hours", "Lead h"),
         ("lead_time_sample_size", "Lead n"),
-        ("lead_time_available", "Lead obs?"),
+        ("lead_time_status", "Lead status"),
         ("failed_deployments", "Failed"),
         ("change_failure_rate_pct", "CFR %"),
         ("mttr_median_hours", "MTTR h"),
         ("mttr_sample_size", "MTTR n"),
-        ("mttr_available", "MTTR obs?"),
+        ("mttr_status", "MTTR status"),
+        ("mttr_all_incidents_hours", "All-cause h"),
+        ("mttr_all_incidents_sample", "All-cause n"),
         ("median_build_minutes", "Build min"),
+        ("metrics_observed", "Observed"),
         ("data_quality_status", "Status"),
+        ("status_reason", "What is missing, and why"),
     ]
     visuals.append(container(vid("fullGrain"), 30, 543, 1860, 350, 20, {
         "visualType": "tableEx",
@@ -367,6 +370,10 @@ def build_governance_visuals() -> list[dict]:
                 ("DoraServiceMonth", "project_name", "Ascending"),
                 ("DoraServiceMonth", "reporting_month", "Ascending"),
             ),
+        },
+        "objects": {
+            "values": [{"properties": {"fontSize": literal("7D")}}],
+            "columnHeaders": [{"properties": {"fontSize": literal("7D")}}],
         },
         "visualContainerObjects": {
             "title": [{"properties": {"show": literal("true"), "text": literal(

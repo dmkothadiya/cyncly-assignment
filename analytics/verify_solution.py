@@ -426,6 +426,13 @@ def check_pbip(report: Report) -> None:
 
 
 def check_pbix(report: Report, path: Path) -> None:
+    """Inspect a saved .pbix, including the modern PBIR layout.
+
+    A .pbix saved by a current Power BI Desktop stores the report as PBIR files
+    (Report/definition/...), not the legacy Report/Layout blob, and keeps the model in
+    a compressed DataModel entry. Reading only the legacy names reported a healthy
+    file as empty.
+    """
     if not path.exists():
         report.add(
             "Saved .pbix inspected",
@@ -437,39 +444,74 @@ def check_pbix(report: Report, path: Path) -> None:
     try:
         with zipfile.ZipFile(path) as archive:
             names = archive.namelist()
-            model_blob = archive.read("DataModelSchema") if "DataModelSchema" in names else b""
-            layout_blob = archive.read("Report/Layout") if "Report/Layout" in names else b""
+            pbir = {name: archive.read(name) for name in names
+                    if name.startswith("Report/definition/") and name.endswith(".json")}
+            has_model = "DataModel" in names
+            model_size = len(archive.read("DataModel")) if has_model else 0
+            model_text = ""
+            if "DataModelSchema" in names:
+                model_text = archive.read("DataModelSchema").decode("utf-16-le", errors="ignore")
     except Exception as error:  # noqa: BLE001
         report.add("Saved .pbix inspected", False, f"cannot read the file: {error}")
         return
 
-    model_text = model_blob.decode("utf-16-le", errors="ignore")
-    layout_text = layout_blob.decode("utf-16-le", errors="ignore")
-
-    wanted = ["Deployment Frequency (per project-month)", "Lead Time for Changes (median h)",
-              "Change Failure Rate %", "MTTR (median h)"]
-    found = [name for name in wanted if name in model_text]
+    pages = [n for n in pbir if n.endswith("/page.json")]
+    visuals = [n for n in pbir if n.endswith("/visual.json")]
     report.add(
-        "All four DORA measures exist in the .pbix",
-        len(found) == len(wanted),
-        f"{len(found)}/{len(wanted)} found: {', '.join(found) if found else 'none'}",
+        "Saved .pbix contains the report pages and visuals",
+        len(pages) == 2 and len(visuals) >= 15,
+        f"{len(pages)} page(s), {len(visuals)} visual(s), {len(pbir)} PBIR definition file(s)",
+    )
+    report.add(
+        "Saved .pbix contains an embedded model",
+        has_model and model_size > 10_000,
+        f"DataModel entry present ({model_size // 1024} KB)",
     )
 
-    tables = ["DoraServiceMonth", "FactDeployment", "FactCommitLink", "FactIncident", "DimProject"]
-    present = [name for name in tables if name in model_text]
+    if model_text:
+        wanted = ["Deployment Frequency (per project-month)",
+                  "Lead Time for Changes (median h)", "Change Failure Rate %", "MTTR (median h)"]
+        found = [name for name in wanted if name in model_text]
+        report.add(
+            "All four DORA measures exist in the .pbix",
+            len(found) == len(wanted),
+            f"{len(found)}/{len(wanted)} found in DataModelSchema",
+        )
+    else:
+        # The model is compressed, so measure names are not readable here. The PBIP is
+        # the source of that model and is validated separately; say so instead of
+        # pretending to have checked the binary.
+        report.add(
+            "DORA measures verified via the project, not the binary",
+            True,
+            "model is compressed; measure and table checks run against DORA_Project/DORA.SemanticModel",
+        )
+
+    # Staleness: compare the saved report against the project it came from.
+    saved = {name.split("/")[-2]: json.loads(blob) for name, blob in pbir.items()
+             if name.endswith("/visual.json")}
+    project_visuals = {
+        path.parent.name: json.loads(path.read_text(encoding="utf-8"))
+        for path in (ANALYTICS / "powerbi" / "DORA_Project").glob(
+            "DORA.Report/definition/pages/*/visuals/*/visual.json")
+    }
+    differing = [vid for vid, doc in project_visuals.items()
+                 if vid in saved and saved[vid] != doc]
+    absent = [vid for vid in project_visuals if vid not in saved]
     report.add(
-        "Expected tables are in the .pbix model",
-        len(present) == len(tables),
-        f"{len(present)}/{len(tables)} found",
+        "Saved .pbix matches the current project",
+        not differing and not absent,
+        "identical to DORA_Project" if not differing and not absent
+        else f"{len(differing)} visual(s) differ and {len(absent)} are missing - "
+             "reopen the .pbip and save again",
     )
 
-    visuals = len(re.findall(r'"visualType"', layout_text))
-    pages = len(re.findall(r'"displayName"', layout_text))
-    report.add(
-        "Report page contains visuals",
-        visuals >= 4,
-        f"{visuals} visual definitions, {pages} named pages/sections detected",
-    )
+
+def _page_of(visual_paths: list[str], visual_id: str) -> str:
+    for name in visual_paths:
+        if name.split("/")[-2] == visual_id:
+            return name.split("/")[3]
+    return ""
 
 
 def main() -> int:

@@ -425,8 +425,16 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         )
     )
 
+    all_incident_month = fact_incident.groupby(
+        ["project_sk", "reporting_month"], as_index=False
+    ).agg(
+        mttr_all_incidents_hours=("restore_hours", "median"),
+        mttr_all_incidents_sample=("restore_hours", "size"),
+    )
+
     dora = deploy_month.merge(lead_month, on=["project_sk", "reporting_month"], how="left")
     dora = dora.merge(failed_month, on=["project_sk", "reporting_month"], how="left")
+    dora = dora.merge(all_incident_month, on=["project_sk", "reporting_month"], how="left")
     dora = dora.merge(dim_project, on="project_sk", how="left")
 
     dora["days_in_month"] = pd.PeriodIndex(dora["reporting_month"], freq="M").days_in_month
@@ -437,19 +445,68 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     ).round(2)
     dora["lead_time_median_hours"] = dora["lead_time_median_hours"].round(2)
     dora["mttr_median_hours"] = dora["mttr_median_hours"].round(2)
+    dora["mttr_all_incidents_hours"] = dora["mttr_all_incidents_hours"].round(2)
     dora["lead_time_available"] = dora["lead_time_median_hours"].notna()
     dora["mttr_available"] = dora["mttr_median_hours"].notna()
+
+    # A blank is only ever "not observed". Saying which evidence is missing - and
+    # whether the project has any commits at all - is the difference between a reader
+    # trusting the row and a reader assuming the pipeline is broken.
+    link_counts = fact_commit_link.groupby("project_sk").size()
+    incident_counts = fact_incident[fact_incident["caused_by_deployment"] == 1].groupby(
+        "project_sk"
+    ).size()
+
+    def lead_status(row: pd.Series) -> str:
+        if pd.isna(row["lead_time_median_hours"]):
+            return "not_observed"
+        if (row["lead_time_sample_size"] or 0) < 5:
+            return "below_threshold"
+        return "observed"
+
+    def mttr_status(row: pd.Series) -> str:
+        return "not_observed" if pd.isna(row["mttr_median_hours"]) else "observed"
+
+    def reason(row: pd.Series) -> str:
+        missing: list[str] = []
+        if pd.isna(row["lead_time_median_hours"]):
+            if link_counts.get(row["project_sk"], 0) == 0:
+                missing.append(
+                    "the source records no commit for this project, so lead time cannot exist"
+                )
+            else:
+                missing.append("no commit links to a build in this project-month")
+        elif (row["lead_time_sample_size"] or 0) < 5:
+            missing.append(
+                f"lead time rests on {int(row['lead_time_sample_size'])} observation(s), "
+                "below the 5 needed for a stable median"
+            )
+        if pd.isna(row["mttr_median_hours"]):
+            missing.append("no deployment-caused incident this project-month")
+        elif (row["mttr_sample_size"] or 0) < 3:
+            missing.append(
+                f"MTTR rests on {int(row['mttr_sample_size'])} incident(s); indicative only"
+            )
+        return "; ".join(missing) if missing else "all four metrics observed"
 
     def availability(row: pd.Series) -> str:
         lead_ok = bool(row["lead_time_available"]) and (row["lead_time_sample_size"] or 0) >= 5
         mttr_ok = bool(row["mttr_available"]) and (row["mttr_sample_size"] or 0) >= 1
-        if lead_ok and mttr_ok:
-            return "validated"
-        if bool(row["lead_time_available"]) or bool(row["mttr_available"]):
-            return "partial"
-        return "unavailable"
+        observed = 2 + int(lead_ok) + int(mttr_ok)
+        if observed == 4:
+            return "complete"
+        return "partial" if observed == 3 else "minimal"
 
+    dora["lead_time_status"] = dora.apply(lead_status, axis=1)
+    dora["mttr_status"] = dora.apply(mttr_status, axis=1)
+    dora["metrics_observed"] = dora.apply(
+        lambda row: 2
+        + int(bool(row["lead_time_available"]) and (row["lead_time_sample_size"] or 0) >= 5)
+        + int(bool(row["mttr_available"]) and (row["mttr_sample_size"] or 0) >= 1),
+        axis=1,
+    ).astype("Int64")
     dora["data_quality_status"] = dora.apply(availability, axis=1)
+    dora["status_reason"] = dora.apply(reason, axis=1)
     dora["grain"] = "project_sk x reporting_month"
     dora["notes"] = (
         "Build runs are a deployment proxy: the source records no environment or release event. "
@@ -462,7 +519,8 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     # in the report and force the model to treat a sample size as a decimal.
     for column in (
         "days_in_month", "deployment_count", "failed_deployments",
-        "lead_time_sample_size", "mttr_sample_size",
+        "lead_time_sample_size", "mttr_sample_size", "mttr_all_incidents_sample",
+        "metrics_observed",
     ):
         dora[column] = dora[column].astype("Int64")
     dora = dora[
@@ -470,9 +528,12 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
             "project_sk", "project_name", "reporting_month", "grain", "days_in_month",
             "deployment_count", "deployment_frequency_per_day",
             "lead_time_median_hours", "lead_time_sample_size", "lead_time_available",
+            "lead_time_status",
             "failed_deployments", "change_failure_rate_pct",
-            "mttr_median_hours", "mttr_sample_size", "mttr_available",
-            "median_build_minutes", "data_quality_status", "notes",
+            "mttr_median_hours", "mttr_sample_size", "mttr_available", "mttr_status",
+            "mttr_all_incidents_hours", "mttr_all_incidents_sample",
+            "median_build_minutes",
+            "metrics_observed", "data_quality_status", "status_reason", "notes",
         ]
     ].sort_values(["reporting_month", "project_name"]).reset_index(drop=True)
 
