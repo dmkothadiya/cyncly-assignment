@@ -1,60 +1,68 @@
 {
-  "source_excel": "docs/Case Study - DORA Metrics Data.xlsx",
-  "source_rows": {
-    "commits": 164,
-    "builds": 350,
-    "incidents": 11,
-    "projects": 2
-  },
-  "source_columns": {
-    "commits": [
-      "commit_id",
-      "organization_id",
-      "project_sk",
-      "repository_sk",
-      "build_sk",
-      "branch_name",
-      "author_name",
-      "author_email",
-      "author_date",
-      "committer_name",
-      "committer_email",
-      "committer_date",
-      "change_type",
-      "change_count",
-      "ingestion_datetime"
-    ],
-    "builds": [
-      "build_id",
-      "pipeline_id",
-      "build_name",
-      "pipeline_start_time",
-      "pipeline_end_time",
-      "project_sk",
-      "ingestion_datetime"
-    ],
-    "incidents": [
-      "workitem_id",
-      "organization_sk",
-      "title",
-      "status",
-      "area_path",
-      "iteration_path",
-      "region",
-      "cause_category",
-      "caused_by_deployment",
-      "customer_impact",
-      "incident_started_datetime",
-      "incident_reported_customersupport_datetime",
-      "incident_reported_engineering_datetime",
-      "investigation_started_datetime",
-      "incident_resolved_datetime",
-      "ingestion_datetime"
-    ],
-    "projects": [
-      "project_id",
-      "project_name"
-    ]
-  },
-  "generated_at_utc": "2026-10-23T15:44:01.622144+00:00"
+  "source_workbook": "docs/Case Study - DORA Metrics Data.xlsx",
+  "source_sha256": "493ae0cddf7a52f61edb5d49b402fd86bdf21b22bbae93514f025f31f3036846",
+  "ingested_at_utc": "2026-10-24T08:57:55.754890+00:00",
+  "granularity": "one row per source row, values preserved as text",
+  "tables": {
+    "commits": {
+      "rows": 164,
+      "columns": [
+        "commit_id",
+        "organization_id",
+        "project_sk",
+        "repository_sk",
+        "build_sk",
+        "branch_name",
+        "author_name",
+        "author_email",
+        "author_date",
+        "committer_name",
+        "committer_email",
+        "committer_date",
+        "change_type",
+        "change_count",
+        "ingestion_datetime"
+      ]
+    },
+    "builds": {
+      "rows": 350,
+      "columns": [
+        "build_id",
+        "pipeline_id",
+        "build_name",
+        "pipeline_start_time",
+        "pipeline_end_time",
+        "project_sk",
+        "ingestion_datetime"
+      ]
+    },
+    "incidents": {
+      "rows": 11,
+      "columns": [
+        "workitem_id",
+        "organization_sk",
+        "title",
+        "status",
+        "area_path",
+        "iteration_path",
+        "region",
+        "cause_category",
+        "caused_by_deployment",
+        "customer_impact",
+        "incident_started_datetime",
+        "incident_reported_customersupport_datetime",
+        "incident_reported_engineering_datetime",
+        "investigation_started_datetime",
+        "incident_resolved_datetime",
+        "ingestion_datetime"
+      ]
+    },
+    "projects": {
+      "rows": 2,
+      "columns": [
+        "project_id",
+        "project_name"
+      ]
+    }
+  }
 }

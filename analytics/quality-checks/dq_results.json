@@ -1,0 +1,73 @@
+{
+  "generated_at_utc": "2026-10-24T11:16:02.076611+00:00",
+  "checks_run": 3,
+  "checks_failed": 0,
+  "overall_status": "PASS",
+  "results": [
+    {
+      "check_id": "DQ-01",
+      "name": "Referential integrity and grain uniqueness",
+      "question": "Does every fact resolve to a dimension row, and is each declared grain unique?",
+      "status": "PASS",
+      "errors": [],
+      "findings": [
+        "25 commit links reference a deployment_id absent from fact_deployment (build rejected in the silver layer; excluded from lead time)"
+      ],
+      "metrics": {
+        "projects": 4,
+        "duplicate_project_keys": 0,
+        "orphan_rows_by_table": {
+          "fact_deployment": 0,
+          "fact_commit_link": 0,
+          "fact_incident": 0,
+          "dora_service_month": 0
+        },
+        "duplicate_rows_by_key": {
+          "fact_deployment.deployment_id": 0,
+          "fact_incident.workitem_id": 0,
+          "dora_service_month(project_sk, reporting_month)": 0,
+          "fact_commit_link(commit_id, deployment_id)": 0
+        },
+        "commit_links_without_deployment_row": 25
+      }
+    },
+    {
+      "check_id": "DQ-02",
+      "name": "Temporal validity",
+      "question": "Are timestamps ordered and are published lead times non-negative?",
+      "status": "PASS",
+      "errors": [],
+      "findings": [],
+      "metrics": {
+        "deployments_null_start": 0,
+        "deployments_null_end": 0,
+        "deployments_end_before_start": 0,
+        "incidents_null_timestamps": 0,
+        "incidents_resolved_before_started": 0,
+        "commit_links_checked": 134,
+        "commit_links_negative_lead_time": 0,
+        "commit_links_null_lead_time": 0
+      }
+    },
+    {
+      "check_id": "DQ-03",
+      "name": "Metric reconciliation",
+      "question": "Do the published DORA values recompute from the facts at the declared grain?",
+      "status": "PASS",
+      "errors": [],
+      "findings": [],
+      "metrics": {
+        "metric_rows_not_matching_fact_grain": 0,
+        "deployment_count_mismatches": 0,
+        "deployment_frequency_mismatches": 0,
+        "change_failure_rate_mismatches": 0,
+        "rows_where_failed_exceeds_deployments": 0,
+        "lead_time_median_mismatches": 0,
+        "lead_time_sample_mismatches": 0,
+        "failed_deployment_mismatches": 0,
+        "deployments_in_grain": 342,
+        "deployments_in_summary": 342
+      }
+    }
+  ]
+}

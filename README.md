@@ -7,8 +7,8 @@ This repository contains a working, locally verified sample implementation for t
 The delivery is intentionally small enough to explain in an interview while still covering the required constructs:
 
 - Platform engineering: .NET 8 library + xUnit tests + GitHub Actions PR validation
-- Data engineering: Bronze/Silver/Gold pipeline using a local Python script and the supplied workbook
-- Governance: DORA metric definitions, quality checks, migration notes, and executive recommendation
+- Data engineering: Bronze/Silver/Gold pipeline, four DORA metrics at a documented grain, three executable quality checks, and a Power BI Desktop report layer
+- Governance: metric specification with ownership, quality rules, migration notes, and executive recommendation
 - Delivery artifacts: Implementation plan, architecture notes, migration strategy, executive recommendation PDF, and a five-slide presentation
 
 The architecture follows a pragmatic enterprise model:
@@ -43,7 +43,7 @@ Coverage output is stored under `TestResults/` in Cobertura or JSON format depen
 
 ## Data pipeline
 
-Install the Python packages once, then run the pipeline. The workbook is copied into `data/source` for traceability and processed locally:
+Install the Python packages once, then run the pipeline:
 
 ```powershell
 python -m pip install -r requirements.txt
@@ -52,23 +52,90 @@ python analytics/run_pipeline.py
 
 Outputs are generated in:
 
-- `analytics/bronze/`
-- `analytics/silver/`
-- `analytics/gold/`
-- `analytics/quality-checks/`
-- `analytics/dashboard/`
+| Path | Layer |
+|---|---|
+| `analytics/bronze/` | Raw sheet copies plus ingestion metadata (SHA-256, row counts) |
+| `analytics/silver/` | Typed, validated, deduplicated tables and `rejected_rows.csv` |
+| `analytics/gold/` | `dim_project`, three facts, `dora_service_month` (grain), `dora_period_summary` |
+| `analytics/quality-checks/` | `dq_results.json`, `silver_profile.json` |
+| `analytics/dashboard/` | `dora_baseline_dashboard.png` layout reference |
 
-This pipeline preserves the raw workbook, validates date and key fields, and produces a Gold DORA dataset with monthly project-level outcome measures.
+The published grain is **project x calendar month**. All four DORA metrics are
+computed: deployment frequency, lead time for changes, change failure rate and mean
+time to restore. Definitions, exclusions and ownership are in
+[`docs/METRIC_SPEC.md`](docs/METRIC_SPEC.md).
+
+## Data-quality checks
+
+Three executable checks gate the Gold layer:
+
+```powershell
+python analytics/quality-checks/run_quality_checks.py            # exit 0 when all pass
+python analytics/quality-checks/run_quality_checks.py --fixtures # negative test
+```
+
+| ID | Guards against |
+|---|---|
+| DQ-01 | Broken references and duplicate grain |
+| DQ-02 | Impossible timestamps, including negative lead time |
+| DQ-03 | Published metrics that do not reconcile to the facts |
+
+The negative test corrupts a copy of Gold and requires every check to fail, proving
+the checks can actually fail. Rules and known source defects are in
+[`docs/DATA_QUALITY.md`](docs/DATA_QUALITY.md).
 
 ## Power BI Desktop
 
-Run the pipeline, then open Power BI Desktop and import `analytics/gold/dora_metrics.csv` using **Home → Get data → Text/CSV**. Apply the Power Query types and measures described in `analytics/powerbi/POWERBI_DESKTOP_GUIDE.md`. The generated dashboard summary is also available under `analytics/dashboard/`.
+The Power BI layer is in `analytics/powerbi/`:
 
-The repository includes a Power Query M starter script, DAX measure definitions, and setup steps under `analytics/powerbi/`. The `.pbix` report itself must be created and saved from Power BI Desktop; it has not been generated or verified here.
+- `DORA_Project/DORA.pbip` - **the report**. A Power BI project (PBIR report + TMDL model): 12 visuals on one 1920x1080 page, 6 tables, 6 relationships, 14 measures. Open it in Desktop and press **Refresh now**
+- `build_pbip.py` - generates the project (`DORA.Report/` + `DORA.SemanticModel/`)
+- `generate_tmdl_model.py` - generates the TMDL model from the actual Gold columns
+- `validate_pbip.py` - validates every definition file against the Microsoft schemas and resolves every visual field reference against the model
+- `check_references.py` - offline reference resolution used by the validator
+- `DORA_POWER_QUERY.m` - Power Query for the dimension, three facts and date table
+- `DORA_MEASURES.dax` - the four DORA measures plus sample-size and caveat measures
+- `DORA_theme.json` - the report theme
+- `DORA_Data.xlsx` - the same five tables as a workbook, for the manual route
+- `POWERBI_DESKTOP_GUIDE.md` - relationship map, visual-by-visual page spec, limitations
 
-Power BI Desktop supports local report authoring. Publishing and sharing reports through the Power BI service may require a paid license or eligible capacity.
+```powershell
+python analytics/powerbi/generate_tmdl_model.py     # TMDL model
+python analytics/powerbi/build_pbip.py              # PBIR report + project
+python analytics/powerbi/validate_pbip.py           # schemas + field references
+```
 
-The sample workbook is a realistic demonstration dataset and not a production source of truth; therefore it is labeled as synthetic and intentionally limited for interview preparation.
+`analytics/dashboard/dora_powerbi_desktop.png` is a real screenshot of this project
+open in Power BI Desktop, showing 38.0 / 18.2 h / 0.88% / 2.0 h.
+`analytics/dashboard/dora_baseline_dashboard.png` is the earlier layout reference
+rendered from the same Gold numbers - useful for comparison, not a Desktop capture.
+
+**About the `.pbix`:** a `.pbix` package is signed when Desktop writes it, so it
+cannot be produced or edited by hand - repacking one fails with "This file is
+corrupted or was created by an unrecognized version". The project above is the
+authorable equivalent; **File → Save as → Power BI file (\*.pbix)** produces the
+single-file report from it.
+
+## Dashboard verification
+
+Step-by-step guide with expected values, manual report checks and troubleshooting:
+[`docs/DASHBOARD_VERIFICATION_GUIDE.md`](docs/DASHBOARD_VERIFICATION_GUIDE.md).
+
+```powershell
+python analytics/verify_solution.py                                        # 21 checks
+python analytics/verify_solution.py --pbix analytics/powerbi/DORA_DASHBOARD.pbix
+```
+
+The verifier recomputes all four metrics from the fact tables, checks six known-answer
+spot values, reconciles totals, confirms the quality results, and - once you save a
+`.pbix` - inspects the file's model and report layout directly.
+
+## Review package
+
+`DORA_PowerBI_Solution.zip` bundles the pipeline, Silver and Gold data, the quality
+results, the Power BI assets, the metric specification and the dashboard reference.
+Raw Bronze rows are excluded because they contain commit author names and e-mails.
+
 
 ## GitHub Actions workflow
 

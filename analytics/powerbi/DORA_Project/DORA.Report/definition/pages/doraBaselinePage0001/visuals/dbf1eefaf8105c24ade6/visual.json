@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "dbf1eefaf8105c24ade6",
+  "position": {
+    "x": 30,
+    "y": 62,
+    "z": 2,
+    "width": 1500,
+    "height": 34,
+    "tabOrder": 2
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "2 projects  |  342 completed builds  |  deployment proxy, not a release event",
+                    "textStyle": {
+                      "fontSize": "10pt",
+                      "color": "#C9D6E3",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

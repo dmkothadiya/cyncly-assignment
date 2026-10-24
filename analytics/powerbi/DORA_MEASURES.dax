@@ -1,26 +1,119 @@
-Build Runs (Deployment Proxy) =
-SUM ( DoraMetrics[deployment_count] )
+// ============================================================================
+// DORA BASELINE MEASURES  -  Power BI Desktop
+// Home > Modeling > New measure, or paste into Tabular Editor / DAX Studio.
+//
+// Required relationships (single-direction, Dim -> Fact):
+//   DimProject[project_sk]   1 -> * FactDeployment[project_sk]
+//   DimProject[project_sk]   1 -> * FactCommitLink[project_sk]
+//   DimProject[project_sk]   1 -> * FactIncident[project_sk]
+//   DimProject[project_sk]   1 -> * DoraServiceMonth[project_sk]
+//   DimDate[Date]            1 -> * DoraServiceMonth[month_start]
+//   DimDate[Date]            1 -> * FactDeployment[deployment_date]
+//
+// Mark DimDate as the date table (Table tools > Mark as date table > Date).
+// All measures respect the project and date slicers.
+// ============================================================================
 
-Deployment-Related Incidents =
-SUM ( DoraMetrics[deployment_related_incidents] )
 
-Limited Change Failure Rate Proxy =
-DIVIDE (
-    [Deployment-Related Incidents],
-    [Build Runs (Deployment Proxy)]
+// ---------------------------------------------------------------- volumes
+Deployments =
+SUM ( DoraServiceMonth[deployment_count] )
+// format: whole number
+
+Active Months =
+DISTINCTCOUNT ( DoraServiceMonth[reporting_month] )
+// format: whole number
+
+Failed Deployments =
+SUM ( DoraServiceMonth[failed_deployments] )
+// format: whole number
+
+
+// ------------------------------------------------------- 1. deployment frequency
+Deployment Frequency (per day) =
+DIVIDE ( [Deployments], SUM ( DoraServiceMonth[days_in_month] ) )
+// format: 0.00
+
+Deployment Frequency (per month) =
+DIVIDE ( [Deployments], [Active Months] )
+// format: 0.0
+
+
+// ---------------------------------------------------- 2. lead time for changes
+Lead Time for Changes (median h) =
+CALCULATE (
+    MEDIAN ( FactCommitLink[lead_time_hours] ),
+    FactCommitLink[is_valid_lead_time] = TRUE ()
 )
+// format: 0.0 "h"
 
-Mean Time to Restore (Hours) =
-DIVIDE (
-    SUMX (
-        DoraMetrics,
-        DoraMetrics[mean_time_to_restore_hours] * DoraMetrics[total_incidents]
-    ),
-    SUM ( DoraMetrics[total_incidents] )
+Lead Time Sample =
+CALCULATE (
+    COUNTROWS ( FactCommitLink ),
+    FactCommitLink[is_valid_lead_time] = TRUE ()
 )
+// format: whole number
 
-Lead Time for Changes (Hours) =
-BLANK ()
+Lead Time P90 (h) =
+CALCULATE (
+    PERCENTILE.INC ( FactCommitLink[lead_time_hours], 0.9 ),
+    FactCommitLink[is_valid_lead_time] = TRUE ()
+)
+// format: 0.0 "h"
 
-Reporting Months =
-DISTINCTCOUNT ( DoraMetrics[reporting_month] )
+Commit Link Coverage % =
+DIVIDE (
+    CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_linkable] = TRUE () ),
+    COUNTROWS ( FactCommitLink )
+)
+// format: 0.0%
+
+
+// -------------------------------------------------- 3. change failure rate
+Change Failure Rate % =
+DIVIDE ( [Failed Deployments], [Deployments] )
+// format: 0.00%
+
+Deployment Related Incidents =
+CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )
+// format: whole number
+
+
+// -------------------------------------------------------- 4. time to restore
+MTTR (median h) =
+CALCULATE (
+    MEDIAN ( FactIncident[restore_hours] ),
+    FactIncident[caused_by_deployment] = 1
+)
+// format: 0.0 "h"
+
+MTTR Sample =
+CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )
+// format: whole number
+
+MTTR (p90 h) =
+CALCULATE (
+    PERCENTILE.INC ( FactIncident[restore_hours], 0.9 ),
+    FactIncident[caused_by_deployment] = 1
+)
+// format: 0.0 "h"
+
+
+// ------------------------------------------------------------ trust / caveats
+Data Quality Status =
+IF (
+    ISBLANK ( [Lead Time for Changes (median h)] ) || ISBLANK ( [MTTR (median h)] ),
+    "Partial - see caveats",
+    "Validated"
+)
+// format: text
+
+Sample Size Note =
+"Lead time n=" & FORMAT ( [Lead Time Sample], "#,##0" )
+    & "  |  MTTR n=" & FORMAT ( [MTTR Sample], "#,##0" )
+    & "  |  Link coverage " & FORMAT ( [Commit Link Coverage %], "0.0%" )
+// format: text
+
+Deployment Proxy Note =
+"Deployment frequency counts completed pipeline runs. The source has no environment or release event."
+// format: text

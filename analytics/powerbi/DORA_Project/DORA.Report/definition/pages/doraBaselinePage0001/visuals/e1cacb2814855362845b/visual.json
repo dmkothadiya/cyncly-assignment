@@ -1,0 +1,113 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "e1cacb2814855362845b",
+  "position": {
+    "x": 1104,
+    "y": 597,
+    "z": 23,
+    "width": 786,
+    "height": 294,
+    "tabOrder": 23
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "READ BEFORE QUOTING",
+                    "textStyle": {
+                      "fontSize": "9pt",
+                      "color": "#8A5A00",
+                      "fontFamily": "Segoe UI",
+                      "fontWeight": "bold"
+                    }
+                  },
+                  {
+                    "value": "\n- Builds are a deployment proxy - no release or environment event exists in the source.",
+                    "textStyle": {
+                      "fontSize": "8pt",
+                      "color": "#1A202C"
+                    }
+                  },
+                  {
+                    "value": "\n- Change failure rate matches incidents to the project-month, not to a specific deployment.",
+                    "textStyle": {
+                      "fontSize": "8pt",
+                      "color": "#1A202C"
+                    }
+                  },
+                  {
+                    "value": "\n- MTTR rests on 3 incidents; treat as indicative.",
+                    "textStyle": {
+                      "fontSize": "8pt",
+                      "color": "#1A202C"
+                    }
+                  },
+                  {
+                    "value": "\n- Blank means not observed. It is never zero.",
+                    "textStyle": {
+                      "fontSize": "8pt",
+                      "color": "#1A202C"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              }
+            ]
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "background": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "color": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#F2F5F8'"
+                    }
+                  }
+                }
+              }
+            },
+            "transparency": {
+              "expr": {
+                "Literal": {
+                  "Value": "0D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "border": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "false"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

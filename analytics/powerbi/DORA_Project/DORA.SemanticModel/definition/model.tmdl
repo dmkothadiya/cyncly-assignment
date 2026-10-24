@@ -1,0 +1,16 @@
+model Model
+	culture: en-US
+	defaultPowerBIDataSourceVersion: powerBI_V3
+	sourceQueryCulture: en-US
+	discourageImplicitMeasures
+
+ref table DimProject
+ref table DimDate
+ref table FactDeployment
+ref table FactCommitLink
+ref table FactIncident
+ref table DoraServiceMonth
+
+ref expression GoldFolder
+
+annotation PBI_QueryOrder = ["GoldFolder", "DimProject", "DimDate", "FactDeployment", "FactCommitLink", "FactIncident", "DoraServiceMonth"]

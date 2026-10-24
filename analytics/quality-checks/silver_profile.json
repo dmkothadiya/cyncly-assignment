@@ -1,0 +1,35 @@
+{
+  "dedupe_policy": "keep the latest ingestion_datetime per business key",
+  "tables": {
+    "builds": {
+      "rows_in": 342,
+      "rows_out": 342,
+      "duplicate_snapshots_resolved": 0
+    },
+    "commits": {
+      "rows_in": 160,
+      "rows_out": 160,
+      "grain": "commit_id x build_sk (commit-to-build association)",
+      "unique_commits": 108,
+      "duplicate_link_rows_resolved": 0
+    },
+    "incidents": {
+      "rows_in": 11,
+      "rows_out": 11,
+      "duplicate_snapshots_resolved": 0
+    },
+    "commit_links": {
+      "rows_in": 160,
+      "rows_out": 159,
+      "impossible_associations_rejected": 1,
+      "unlinked_commits": 25
+    }
+  },
+  "rejected_rows": 13,
+  "pii_columns_dropped": [
+    "author_email",
+    "author_name",
+    "committer_email",
+    "committer_name"
+  ]
+}

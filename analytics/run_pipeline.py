@@ -1,213 +1,428 @@
+"""Bronze -> Silver -> Gold pipeline for the supplied DORA case-study workbook.
+
+Layer contract
+--------------
+Bronze  Raw sheet copies, untyped, plus ingestion metadata (hash, counts, timestamp).
+Silver  Typed, deduplicated, validated. Rejected rows are recorded with a reason
+        and without personal data.
+Gold    Facts, dimensions, a documented reporting grain, and the DORA metric table.
+
+Reporting grain for the metric table is project_sk x reporting_month.
+"""
+
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
-from typing import Iterable
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE_XLSX = ROOT / 'data' / 'source' / 'Case Study - DORA Metrics Data.xlsx'
-WORKBOOK_PATH = ROOT / 'docs' / 'Case Study - DORA Metrics Data.xlsx'
-BRONZE_DIR = ROOT / 'analytics' / 'bronze'
-SILVER_DIR = ROOT / 'analytics' / 'silver'
-GOLD_DIR = ROOT / 'analytics' / 'gold'
-QUALITY_DIR = ROOT / 'analytics' / 'quality-checks'
-DASHBOARD_DIR = ROOT / 'analytics' / 'dashboard'
+WORKBOOK = ROOT / "docs" / "Case Study - DORA Metrics Data.xlsx"
+BRONZE = ROOT / "analytics" / "bronze"
+SILVER = ROOT / "analytics" / "silver"
+GOLD = ROOT / "analytics" / "gold"
+QUALITY = ROOT / "analytics" / "quality-checks"
+PII_COLUMNS = {"author_name", "author_email", "committer_name", "committer_email"}
 
 
-def ensure_source_copy() -> None:
-    SOURCE_XLSX.parent.mkdir(parents=True, exist_ok=True)
-    if not SOURCE_XLSX.exists():
-        SOURCE_XLSX.write_bytes(WORKBOOK_PATH.read_bytes())
+def utc(series: pd.Series) -> pd.Series:
+    return pd.to_datetime(series, errors="coerce", utc=True)
 
 
-def read_all_sheets(path: Path) -> dict[str, pd.DataFrame]:
-    sheet_names = pd.ExcelFile(path).sheet_names
-    return {
-        sheet_name: pd.read_excel(path, sheet_name=sheet_name, dtype=str)
-        for sheet_name in sheet_names
-    }
+def month_of(series: pd.Series) -> pd.Series:
+    return pd.to_datetime(series, utc=True).dt.tz_localize(None).dt.to_period("M").astype(str)
 
 
-def write_csv(df: pd.DataFrame, path: Path) -> None:
+def write(df: pd.DataFrame, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(path, index=False)
 
 
-def bronze_step() -> dict[str, pd.DataFrame]:
-    raw = read_all_sheets(WORKBOOK_PATH)
-    BRONZE_DIR.mkdir(parents=True, exist_ok=True)
-    for sheet_name, df in raw.items():
-        write_csv(df, BRONZE_DIR / f'{sheet_name}.csv')
+# --------------------------------------------------------------------------- bronze
+def bronze() -> dict[str, pd.DataFrame]:
+    BRONZE.mkdir(parents=True, exist_ok=True)
+    sheet_names = pd.ExcelFile(WORKBOOK).sheet_names
+    raw = {name: pd.read_excel(WORKBOOK, sheet_name=name, dtype=str) for name in sheet_names}
+    for name, df in raw.items():
+        write(df, BRONZE / f"{name}.csv")
+
+    digest = hashlib.sha256()
+    with WORKBOOK.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(65536), b""):
+            digest.update(chunk)
 
     metadata = {
-        'source_excel': WORKBOOK_PATH.relative_to(ROOT).as_posix(),
-        'source_rows': {name: len(df) for name, df in raw.items()},
-        'source_columns': {name: list(df.columns) for name, df in raw.items()},
-        'generated_at_utc': pd.Timestamp.now(tz='UTC').isoformat(),
+        "source_workbook": WORKBOOK.relative_to(ROOT).as_posix(),
+        "source_sha256": digest.hexdigest(),
+        "ingested_at_utc": pd.Timestamp.now(tz="UTC").isoformat(),
+        "granularity": "one row per source row, values preserved as text",
+        "tables": {
+            name: {"rows": int(len(df)), "columns": list(df.columns)}
+            for name, df in raw.items()
+        },
     }
-    (BRONZE_DIR / 'ingestion_metadata.json').write_text(json.dumps(metadata, indent=2), encoding='utf-8')
+    (BRONZE / "ingestion_metadata.json").write_text(
+        json.dumps(metadata, indent=2), encoding="utf-8"
+    )
     return raw
 
 
-def normalize_date_columns(df: pd.DataFrame, columns: Iterable[str]) -> pd.DataFrame:
-    result = df.copy()
-    for column in columns:
-        if column in result.columns:
-            result[column] = pd.to_datetime(result[column], errors='coerce', utc=True)
-    return result
+# --------------------------------------------------------------------------- silver
+def silver(raw: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    SILVER.mkdir(parents=True, exist_ok=True)
+    QUALITY.mkdir(parents=True, exist_ok=True)
+    rejects: list[dict[str, object]] = []
+    dedupe: dict[str, dict[str, int]] = {}
 
+    def reject(table: str, frame: pd.DataFrame, reason: str, key: str) -> None:
+        for value in frame[key].astype(str).tolist():
+            rejects.append({"table": table, "record_key": value, "reason": reason})
 
-def silver_step(raw_tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
-    SILVER_DIR.mkdir(parents=True, exist_ok=True)
-    QUALITY_DIR.mkdir(parents=True, exist_ok=True)
-    silver_tables: dict[str, pd.DataFrame] = {}
-    rejected_rows: list[dict[str, object]] = []
+    def keep_latest(table: str, frame: pd.DataFrame, key: str) -> pd.DataFrame:
+        """Duplicate keys are re-reported snapshots; the latest ingestion wins."""
+        ordered = frame.assign(
+            _ingested=utc(frame["ingestion_datetime"])
+        ).sort_values("_ingested", na_position="first")
+        before = len(ordered)
+        kept = ordered.drop_duplicates(subset=[key], keep="last").drop(columns=["_ingested"])
+        dedupe[table] = {
+            "rows_in": before,
+            "rows_out": len(kept),
+            "duplicate_snapshots_resolved": before - len(kept),
+        }
+        return kept
 
-    for sheet_name, raw_df in raw_tables.items():
-        working = raw_df.copy()
-        if sheet_name == 'commits':
-            working = normalize_date_columns(working, ['author_date', 'committer_date', 'ingestion_datetime'])
-            working['change_count'] = pd.to_numeric(working['change_count'], errors='coerce')
-            required = ['commit_id', 'project_sk', 'repository_sk', 'author_date']
-        elif sheet_name == 'builds':
-            working = normalize_date_columns(working, ['pipeline_start_time', 'pipeline_end_time', 'ingestion_datetime'])
-            required = ['build_id', 'project_sk', 'pipeline_start_time', 'pipeline_end_time']
-        elif sheet_name == 'incidents':
-            working = normalize_date_columns(
-                working,
-                [
-                    'incident_started_datetime',
-                    'incident_reported_customersupport_datetime',
-                    'incident_reported_engineering_datetime',
-                    'investigation_started_datetime',
-                    'incident_resolved_datetime',
-                    'ingestion_datetime',
-                ],
-            )
-            working['caused_by_deployment'] = pd.to_numeric(working['caused_by_deployment'], errors='coerce').astype('Int64')
-            required = ['workitem_id', 'area_path', 'incident_started_datetime', 'incident_resolved_datetime']
-        elif sheet_name == 'projects':
-            required = ['project_id', 'project_name']
-        else:
-            required = []
+    projects = raw["projects"].copy().apply(lambda c: c.astype(str).str.strip())
+    bad = projects[
+        projects["project_id"].isin(["", "nan"]) | projects["project_name"].isin(["", "nan"])
+    ]
+    reject("projects", bad, "missing_required_key", "project_id")
+    projects = projects.drop(bad.index).drop_duplicates(subset=["project_id"], keep="last")
 
-        if required:
-            missing_mask = working[required].isna().any(axis=1)
-            if missing_mask.any():
-                rejected_rows.extend(working.loc[missing_mask].to_dict(orient='records'))
-                working = working.loc[~missing_mask].copy()
+    builds = raw["builds"].copy()
+    builds["pipeline_start_time"] = utc(builds["pipeline_start_time"])
+    builds["pipeline_end_time"] = utc(builds["pipeline_end_time"])
+    builds["project_sk"] = builds["project_sk"].astype(str).str.strip()
+    builds["build_id"] = builds["build_id"].astype(str).str.strip()
+    missing = builds[
+        builds[["build_id", "project_sk", "pipeline_start_time", "pipeline_end_time"]].isna().any(axis=1)
+    ]
+    reject("builds", missing, "missing_required_field", "build_id")
+    builds = builds.drop(missing.index)
+    inverted = builds[builds["pipeline_end_time"] < builds["pipeline_start_time"]]
+    reject("builds", inverted, "end_before_start", "build_id")
+    builds = builds.drop(inverted.index)
+    builds = keep_latest("builds", builds, "build_id")
+    builds["duration_minutes"] = (
+        (builds["pipeline_end_time"] - builds["pipeline_start_time"]).dt.total_seconds() / 60
+    ).round(2)
 
-        working = working.drop_duplicates(subset=[column for column in working.columns if 'id' in column.lower() or column in {'project_sk', 'project_id', 'repository_sk'}], keep='first')
-        silver_tables[sheet_name] = working
-        write_csv(working, SILVER_DIR / f'{sheet_name}.csv')
+    commits = raw["commits"].copy()
+    commits["author_date"] = utc(commits["author_date"])
+    commits["committer_date"] = utc(commits["committer_date"])
+    commits["build_sk"] = commits["build_sk"].astype(str).str.strip()
+    commits["commit_id"] = commits["commit_id"].astype(str).str.strip()
+    commits["project_sk"] = commits["project_sk"].astype(str).str.strip()
+    commits["change_count"] = pd.to_numeric(commits["change_count"], errors="coerce")
+    missing = commits[commits[["commit_id", "project_sk", "author_date"]].isna().any(axis=1)]
+    reject("commits", missing, "missing_required_field", "commit_id")
+    commits = commits.drop(missing.index)
 
-    if rejected_rows:
-        (SILVER_DIR / 'rejected_rows.json').write_text(json.dumps(rejected_rows, default=str, indent=2), encoding='utf-8')
-
-    quality_summary = {
-        'rows_processed': {name: len(df) for name, df in raw_tables.items()},
-        'rows_validated': {name: len(df) for name, df in silver_tables.items()},
-        'rejected_rows': len(rejected_rows),
-        'checks': ['required_columns_present', 'missing_values_flagged', 'duplicate_records_removed', 'dates_normalized'],
+    before = len(commits)
+    commits = (
+        commits.assign(_ingested=utc(commits["ingestion_datetime"]))
+        .sort_values("_ingested", na_position="first")
+        .drop_duplicates(subset=["commit_id", "build_sk"], keep="last")
+        .drop(columns=["_ingested"])
+    )
+    dedupe["commits"] = {
+        "rows_in": before,
+        "rows_out": len(commits),
+        "grain": "commit_id x build_sk (commit-to-build association)",
+        "unique_commits": int(commits["commit_id"].nunique()),
+        "duplicate_link_rows_resolved": before - len(commits),
     }
-    (QUALITY_DIR / 'silver_quality_summary.json').write_text(json.dumps(quality_summary, indent=2), encoding='utf-8')
-    return silver_tables
 
-
-def gold_step(silver_tables: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    GOLD_DIR.mkdir(parents=True, exist_ok=True)
-    DASHBOARD_DIR.mkdir(parents=True, exist_ok=True)
-
-    projects = silver_tables.get('projects', pd.DataFrame()).copy()
-    builds = silver_tables.get('builds', pd.DataFrame()).copy()
-    incidents = silver_tables.get('incidents', pd.DataFrame()).copy()
-
-    if projects.empty or builds.empty or incidents.empty:
-        raise ValueError('Silver layer must contain non-empty projects, builds, and incidents tables.')
-
-    builds['reporting_month'] = (
-        pd.to_datetime(builds['pipeline_end_time'], utc=True)
-        .dt.tz_localize(None)
-        .dt.to_period('M')
-        .astype(str)
+    incidents = raw["incidents"].copy()
+    incidents["incident_started_datetime"] = utc(incidents["incident_started_datetime"])
+    incidents["incident_resolved_datetime"] = utc(incidents["incident_resolved_datetime"])
+    incidents["caused_by_deployment"] = (
+        pd.to_numeric(incidents["caused_by_deployment"], errors="coerce").fillna(0).astype(int)
     )
-    projects['project_id'] = projects['project_id'].astype(str)
-    builds['project_sk'] = builds['project_sk'].astype(str)
-    project_builds = (
-        builds.groupby(['project_sk', 'reporting_month'], as_index=False)
-        .agg(deployment_count=('build_id', 'nunique'))
+    incidents["workitem_id"] = incidents["workitem_id"].astype(str).str.strip()
+    incidents["project_name"] = (
+        incidents["area_path"].astype(str)
+        .str.replace(r"^.*\\", "", regex=True)
+        .str.replace("Demo Project", "Project", regex=False)
+        .str.strip()
+    )
+    missing = incidents[
+        incidents[
+            ["workitem_id", "incident_started_datetime", "incident_resolved_datetime"]
+        ].isna().any(axis=1)
+    ]
+    reject("incidents", missing, "missing_required_field", "workitem_id")
+    incidents = incidents.drop(missing.index)
+    inverted = incidents[
+        incidents["incident_resolved_datetime"] < incidents["incident_started_datetime"]
+    ]
+    reject("incidents", inverted, "resolved_before_started", "workitem_id")
+    incidents = incidents.drop(inverted.index)
+    incidents = keep_latest("incidents", incidents, "workitem_id")
+    incidents["restore_hours"] = (
+        (incidents["incident_resolved_datetime"] - incidents["incident_started_datetime"])
+        .dt.total_seconds() / 3600
+    ).round(2)
+
+    tables = {"projects": projects, "builds": builds, "commits": commits, "incidents": incidents}
+    for name, df in tables.items():
+        tables[name] = df[[c for c in df.columns if c not in PII_COLUMNS]]
+
+    # A build that completed before a commit was authored cannot contain it: the
+    # association is impossible, so it is rejected rather than silently published.
+    links = commits.merge(
+        builds[["build_id", "pipeline_end_time"]].rename(columns={"build_id": "build_sk"}),
+        on="build_sk",
+        how="left",
+    )
+    links["deployed_at"] = links["pipeline_end_time"]
+    links["lead_time_hours"] = (
+        (links["deployed_at"] - links["author_date"]).dt.total_seconds() / 3600
+    ).round(2)
+    links["is_linkable"] = links["deployed_at"].notna()
+    impossible = links[links["is_linkable"] & (links["lead_time_hours"] < 0)]
+    for value in impossible["commit_id"].astype(str).tolist():
+        rejects.append(
+            {"table": "commit_links", "record_key": value, "reason": "association_precedes_commit"}
+        )
+    links = links.drop(impossible.index)
+    links["is_valid_lead_time"] = links["is_linkable"]
+    links["grain"] = "commit_id x deployment_id"
+    commit_links = links.rename(columns={"build_sk": "deployment_id"})[
+        [
+            "commit_id", "deployment_id", "project_sk", "author_date", "deployed_at",
+            "lead_time_hours", "is_linkable", "is_valid_lead_time", "grain",
+        ]
+    ]
+    tables["commit_links"] = commit_links
+    write(commit_links, SILVER / "commit_links.csv")
+    dedupe["commit_links"] = {
+        "rows_in": len(commits),
+        "rows_out": len(commit_links),
+        "impossible_associations_rejected": int(len(impossible)),
+        "unlinked_commits": int((~commit_links["is_linkable"]).sum()),
+    }
+
+    for name in ("projects", "builds", "commits", "incidents"):
+        write(tables[name], SILVER / f"{name}.csv")
+
+    reject_frame = pd.DataFrame(rejects, columns=["table", "record_key", "reason"])
+    write(reject_frame, SILVER / "rejected_rows.csv")
+    (QUALITY / "silver_profile.json").write_text(
+        json.dumps(
+            {
+                "dedupe_policy": "keep the latest ingestion_datetime per business key",
+                "tables": dedupe,
+                "rejected_rows": int(len(reject_frame)),
+                "pii_columns_dropped": sorted(PII_COLUMNS),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+    return tables
+
+
+# --------------------------------------------------------------------------- gold
+def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
+    GOLD.mkdir(parents=True, exist_ok=True)
+    projects, builds = tables["projects"], tables["builds"]
+    inline_links = tables["commit_links"]
+    incidents = tables["incidents"]
+
+    dim_project = projects.rename(columns={"project_id": "project_sk"})[
+        ["project_sk", "project_name"]
+    ].assign(is_mapped=True)
+
+    # incidents can reference projects that are absent from the project sheet
+    unmapped_names = sorted(
+        set(incidents["project_name"].dropna()) - set(dim_project["project_name"])
+    )
+    if unmapped_names:
+        extra = pd.DataFrame(
+            {
+                "project_sk": [f"unmapped::{name}" for name in unmapped_names],
+                "project_name": unmapped_names,
+                "is_mapped": False,
+            }
+        )
+        dim_project = pd.concat([dim_project, extra], ignore_index=True)
+
+    fact_deployment = (
+        builds.assign(
+            deployment_date=builds["pipeline_end_time"].dt.tz_localize(None).dt.date.astype(str),
+            reporting_month=month_of(builds["pipeline_end_time"]),
+        )
+        .rename(columns={"build_id": "deployment_id", "build_name": "component_name"})[
+            [
+                "deployment_id", "project_sk", "component_name", "pipeline_id",
+                "pipeline_start_time", "pipeline_end_time", "duration_minutes",
+                "deployment_date", "reporting_month",
+            ]
+        ]
+        .merge(dim_project, on="project_sk", how="left")
     )
 
-    project_names = projects.rename(columns={'project_id': 'project_sk', 'project_name': 'project_name'})
-    project_builds = project_builds.merge(project_names[['project_sk', 'project_name']], on='project_sk', how='left')
+    fact_commit_link = inline_links.copy()
 
-    incidents['reporting_month'] = (
-        pd.to_datetime(incidents['incident_started_datetime'], utc=True)
-        .dt.tz_localize(None)
-        .dt.to_period('M')
-        .astype(str)
+    fact_incident = (
+        incidents.merge(dim_project[["project_sk", "project_name"]], on="project_name", how="left")
+        .rename(columns={
+            "incident_started_datetime": "started_at",
+            "incident_resolved_datetime": "resolved_at",
+        })[
+            [
+                "workitem_id", "project_sk", "project_name", "caused_by_deployment",
+                "started_at", "resolved_at", "restore_hours",
+            ]
+        ]
     )
-    incidents['project_reference'] = (
-        incidents['area_path']
-        .str.replace('Product Management\\Demo Projects\\', '', regex=False)
-        .str.replace('Demo Project', 'Project', regex=False)
+    fact_incident["reporting_month"] = month_of(fact_incident["started_at"])
+
+    deploy_month = fact_deployment.groupby(
+        ["project_sk", "reporting_month"], as_index=False
+    ).agg(
+        deployment_count=("deployment_id", "nunique"),
+        median_build_minutes=("duration_minutes", "median"),
     )
-    incident_month = (
-        incidents.groupby(['project_reference', 'reporting_month'], as_index=False)
+
+    valid_links = fact_commit_link[fact_commit_link["is_valid_lead_time"]].assign(
+        reporting_month=month_of(fact_commit_link.loc[
+            fact_commit_link["is_valid_lead_time"], "deployed_at"
+        ])
+    )
+    lead_month = valid_links.groupby(["project_sk", "reporting_month"], as_index=False).agg(
+        lead_time_median_hours=("lead_time_hours", "median"),
+        lead_time_sample_size=("lead_time_hours", "size"),
+    )
+
+    failed_month = (
+        fact_incident[fact_incident["caused_by_deployment"] == 1]
+        .groupby(["project_sk", "reporting_month"], as_index=False)
         .agg(
-            total_incidents=('workitem_id', 'count'),
-            deployment_related_incidents=('caused_by_deployment', lambda values: int((values == 1).sum())),
+            failed_deployments=("workitem_id", "count"),
+            mttr_median_hours=("restore_hours", "median"),
+            mttr_sample_size=("restore_hours", "size"),
         )
     )
-    incident_month = incident_month.rename(columns={'project_reference': 'project_name'})
 
-    working = project_builds.merge(incident_month, left_on=['project_name', 'reporting_month'], right_on=['project_name', 'reporting_month'], how='left')
-    working['total_incidents'] = working['total_incidents'].fillna(0).astype(int)
-    working['deployment_related_incidents'] = working['deployment_related_incidents'].fillna(0).astype(int)
-    working['change_failure_rate'] = working.apply(
-        lambda row: (row['deployment_related_incidents'] / row['deployment_count']) if row['deployment_count'] else 0.0,
-        axis=1,
+    dora = deploy_month.merge(lead_month, on=["project_sk", "reporting_month"], how="left")
+    dora = dora.merge(failed_month, on=["project_sk", "reporting_month"], how="left")
+    dora = dora.merge(dim_project, on="project_sk", how="left")
+
+    dora["days_in_month"] = pd.PeriodIndex(dora["reporting_month"], freq="M").days_in_month
+    dora["deployment_frequency_per_day"] = (dora["deployment_count"] / dora["days_in_month"]).round(3)
+    dora["failed_deployments"] = dora["failed_deployments"].fillna(0).astype(int)
+    dora["change_failure_rate_pct"] = (
+        dora["failed_deployments"] / dora["deployment_count"] * 100
+    ).round(2)
+    dora["lead_time_median_hours"] = dora["lead_time_median_hours"].round(2)
+    dora["mttr_median_hours"] = dora["mttr_median_hours"].round(2)
+    dora["lead_time_available"] = dora["lead_time_median_hours"].notna()
+    dora["mttr_available"] = dora["mttr_median_hours"].notna()
+
+    def availability(row: pd.Series) -> str:
+        lead_ok = bool(row["lead_time_available"]) and (row["lead_time_sample_size"] or 0) >= 5
+        mttr_ok = bool(row["mttr_available"]) and (row["mttr_sample_size"] or 0) >= 1
+        if lead_ok and mttr_ok:
+            return "validated"
+        if bool(row["lead_time_available"]) or bool(row["mttr_available"]):
+            return "partial"
+        return "unavailable"
+
+    dora["data_quality_status"] = dora.apply(availability, axis=1)
+    dora["grain"] = "project_sk x reporting_month"
+    dora["notes"] = (
+        "Build runs are a deployment proxy: the source records no environment or release event. "
+        "Lead time is calculated at commit-to-build association grain, so a commit rebuilt several times "
+        "appears once per build. CFR matches incidents flagged caused_by_deployment to project-month "
+        "deployments because no event-level deployment link exists. MTTR is blank where no "
+        "deployment-caused incident was recorded."
+    )
+    dora = dora[
+        [
+            "project_sk", "project_name", "reporting_month", "grain", "days_in_month",
+            "deployment_count", "deployment_frequency_per_day",
+            "lead_time_median_hours", "lead_time_sample_size", "lead_time_available",
+            "failed_deployments", "change_failure_rate_pct",
+            "mttr_median_hours", "mttr_sample_size", "mttr_available",
+            "median_build_minutes", "data_quality_status", "notes",
+        ]
+    ].sort_values(["reporting_month", "project_name"]).reset_index(drop=True)
+
+    valid_lead = fact_commit_link[fact_commit_link["is_valid_lead_time"]]
+    failed_incidents = fact_incident[fact_incident["caused_by_deployment"] == 1]
+    summary = pd.DataFrame(
+        [
+            {
+                "period_start": dora["reporting_month"].min(),
+                "period_end": dora["reporting_month"].max(),
+                "projects": int(dora["project_sk"].nunique()),
+                "months": int(dora["reporting_month"].nunique()),
+                "total_deployments": int(dora["deployment_count"].sum()),
+                "deployment_frequency_per_month": round(dora["deployment_count"].mean(), 2),
+                "lead_time_median_hours": round(valid_lead["lead_time_hours"].median(), 2),
+                "lead_time_sample_size": int(len(valid_lead)),
+                "unique_commits": int(fact_commit_link["commit_id"].nunique()),
+                "commit_link_coverage_pct": round(fact_commit_link["is_linkable"].mean() * 100, 2),
+                "invalid_lead_links": int(
+                    (fact_commit_link["is_linkable"] & ~fact_commit_link["is_valid_lead_time"]).sum()
+                ),
+                "change_failure_rate_pct": round(
+                    failed_incidents["workitem_id"].nunique()
+                    / dora["deployment_count"].sum()
+                    * 100,
+                    2,
+                ),
+                "deployment_related_incidents": int(failed_incidents["workitem_id"].nunique()),
+                "mttr_median_hours": round(failed_incidents["restore_hours"].median(), 2),
+                "mttr_sample_size": int(len(failed_incidents)),
+                "data_quality_status": "partial",
+                "notes": "Period-wide rollup; deployment-proxy and incident-matching caveats apply.",
+            }
+        ]
     )
 
-    incident_durations = (
-        incidents.assign(restore_hours=(incidents['incident_resolved_datetime'] - incidents['incident_started_datetime']).dt.total_seconds() / 3600)
-        .groupby(['project_reference', 'reporting_month'], as_index=False)
-        .agg(mean_time_to_restore_hours=('restore_hours', 'mean'))
-        .rename(columns={'project_reference': 'project_name'})
-    )
-    working = working.merge(incident_durations, on=['project_name', 'reporting_month'], how='left')
-    if 'mean_time_to_restore_hours' not in working.columns:
-        working['mean_time_to_restore_hours'] = 0.0
-    working['mean_time_to_restore_hours'] = working['mean_time_to_restore_hours'].fillna(0.0)
-    working['lead_time_for_changes_hours'] = None
-    working['data_quality_status'] = 'limited'
-    working['metric_notes'] = 'Deployment frequency and change failure rate derived from the case-study workbook; lead time for changes unavailable because the source workbook does not provide a reliable commit-to-deployment join.'
-
-    write_csv(working, GOLD_DIR / 'dora_metrics.csv')
-    dashboard_summary = working[['project_name', 'reporting_month', 'deployment_count', 'change_failure_rate', 'mean_time_to_restore_hours']].copy()
-    write_csv(dashboard_summary, DASHBOARD_DIR / 'dora_dashboard_summary.csv')
-    (DASHBOARD_DIR / 'dora_dashboard_summary.txt').write_text(
-        dashboard_summary.to_string(index=False),
-        encoding='utf-8',
-    )
-    (QUALITY_DIR / 'gold_quality_summary.json').write_text(json.dumps({
-        'metrics_generated': list(working.columns),
-        'rows': len(working),
-        'data_quality_status_counts': working['data_quality_status'].value_counts().to_dict(),
-        'lead_time_for_changes_unavailable': True,
-    }, indent=2), encoding='utf-8')
-    return working
+    outputs = {
+        "dim_project": dim_project,
+        "fact_deployment": fact_deployment,
+        "fact_commit_link": fact_commit_link,
+        "fact_incident": fact_incident,
+        "dora_service_month": dora,
+        "dora_period_summary": summary,
+    }
+    for name, df in outputs.items():
+        write(df, GOLD / f"{name}.csv")
+    return outputs
 
 
 def main() -> None:
-    ensure_source_copy()
-    raw_tables = bronze_step()
-    silver_tables = silver_step(raw_tables)
-    gold_step(silver_tables)
-    print('Bronze, Silver, Gold, and quality artifacts generated in analytics/')
+    raw = bronze()
+    tables = silver(raw)
+    outputs = gold(tables)
+    dora = outputs["dora_service_month"]
+    print("Bronze:", ", ".join(f"{k}={len(v)}" for k, v in raw.items()))
+    print(
+        f"Silver: builds={len(tables['builds'])}, commits={len(tables['commits'])}, "
+        f"incidents={len(tables['incidents'])}"
+    )
+    print(
+        f"Gold:   grain rows={len(dora)}, projects={dora['project_sk'].nunique()}, "
+        f"months={dora['reporting_month'].nunique()}"
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

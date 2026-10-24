@@ -1,0 +1,116 @@
+table FactCommitLink
+	lineageTag: 529631c4-251e-5bd7-aeee-207299016bd7
+
+	column commit_id
+		dataType: string
+		lineageTag: 0b405388-a0bd-5fef-b9a5-2de042e50999
+		summarizeBy: none
+		sourceColumn: commit_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column deployment_id
+		dataType: string
+		lineageTag: 8c2ddf26-f57a-5a1c-87e9-87e108e65c5a
+		summarizeBy: none
+		sourceColumn: deployment_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column project_sk
+		dataType: string
+		lineageTag: 96c89025-fb3a-5658-be88-46a4a41fbb85
+		summarizeBy: none
+		sourceColumn: project_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column author_date
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn:ss
+		lineageTag: 21b6b797-cbb2-5472-8ce0-002e89672b50
+		summarizeBy: none
+		sourceColumn: author_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column deployed_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn:ss
+		lineageTag: ef84b02d-2790-53bf-b614-c9e3a7a280f0
+		summarizeBy: none
+		sourceColumn: deployed_at
+
+		annotation SummarizationSetBy = Automatic
+
+	column lead_time_hours
+		dataType: double
+		lineageTag: d0d0e656-238b-5643-901e-cc246ade6e31
+		summarizeBy: none
+		sourceColumn: lead_time_hours
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_linkable
+		dataType: boolean
+		lineageTag: 98db58ce-d32c-5b89-ba03-fdbe8c7c2bab
+		summarizeBy: none
+		sourceColumn: is_linkable
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_valid_lead_time
+		dataType: boolean
+		lineageTag: 05765e1d-bae0-592b-9272-f29d6dcb56cf
+		summarizeBy: none
+		sourceColumn: is_valid_lead_time
+
+		annotation SummarizationSetBy = Automatic
+
+	column grain
+		dataType: string
+		lineageTag: 3941cbfe-d78c-540b-a3c4-7bd82cc0a63c
+		summarizeBy: none
+		sourceColumn: grain
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FactCommitLink = m
+		mode: import
+		source =
+					let
+						Source = Csv.Document(
+							File.Contents(GoldFolder & "\fact_commit_link.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+						),
+						Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+						Cleaned = Table.ReplaceValue(
+							Promoted,
+							"",
+							null,
+							Replacer.ReplaceValue,
+							Table.ColumnNames(Promoted)
+						),
+						Typed = Table.TransformColumnTypes(
+							Cleaned,
+							{
+								{"commit_id", type text},
+								{"deployment_id", type text},
+								{"project_sk", type text},
+								{"lead_time_hours", type number},
+								{"is_linkable", type logical},
+								{"is_valid_lead_time", type logical},
+								{"grain", type text}
+							}
+						),
+						WithTimestamps = Table.TransformColumns(
+							Typed,
+							{
+								{"author_date", each if _ = null then null else DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime},
+								{"deployed_at", each if _ = null then null else DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime}
+							}
+						)
+					in
+						WithTimestamps
+
+	annotation PBI_ResultType = Table

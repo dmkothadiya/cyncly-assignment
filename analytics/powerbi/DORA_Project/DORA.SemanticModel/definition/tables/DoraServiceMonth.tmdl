@@ -1,0 +1,253 @@
+table DoraServiceMonth
+	lineageTag: a9397e83-9ee1-5661-a7b7-403f2a64ebac
+
+	column project_sk
+		dataType: string
+		lineageTag: c0943521-9817-562a-ba9d-24741775fe95
+		summarizeBy: none
+		sourceColumn: project_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column project_name
+		dataType: string
+		lineageTag: cbbde145-97a8-5d01-a1d0-17ace61bd521
+		summarizeBy: none
+		sourceColumn: project_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column reporting_month
+		dataType: string
+		lineageTag: c13b2840-2595-55ec-9364-50424ade32a2
+		summarizeBy: none
+		sourceColumn: reporting_month
+
+		annotation SummarizationSetBy = Automatic
+
+	column grain
+		dataType: string
+		lineageTag: 36657d8f-60e3-5dc7-b585-0bc86d0b6cfd
+		summarizeBy: none
+		sourceColumn: grain
+
+		annotation SummarizationSetBy = Automatic
+
+	column days_in_month
+		dataType: int64
+		lineageTag: cc5f295e-fa40-5739-bbea-523244ffe78d
+		summarizeBy: none
+		sourceColumn: days_in_month
+
+		annotation SummarizationSetBy = Automatic
+
+	column deployment_count
+		dataType: int64
+		lineageTag: 7b55e89c-cc7c-5240-9302-7810c7caba02
+		summarizeBy: none
+		sourceColumn: deployment_count
+
+		annotation SummarizationSetBy = Automatic
+
+	column deployment_frequency_per_day
+		dataType: double
+		lineageTag: 899958fe-2d4c-58bb-b43e-8a0dd80a22ac
+		summarizeBy: none
+		sourceColumn: deployment_frequency_per_day
+
+		annotation SummarizationSetBy = Automatic
+
+	column lead_time_median_hours
+		dataType: double
+		lineageTag: 3177ec76-507a-54e8-8be7-06764e07f7c4
+		summarizeBy: none
+		sourceColumn: lead_time_median_hours
+
+		annotation SummarizationSetBy = Automatic
+
+	column lead_time_sample_size
+		dataType: double
+		lineageTag: 9c3f25c8-5d85-5ec9-95fa-c036e5eb68e0
+		summarizeBy: none
+		sourceColumn: lead_time_sample_size
+
+		annotation SummarizationSetBy = Automatic
+
+	column lead_time_available
+		dataType: boolean
+		lineageTag: 8306e2b1-9e90-5a9f-9468-064608659446
+		summarizeBy: none
+		sourceColumn: lead_time_available
+
+		annotation SummarizationSetBy = Automatic
+
+	column failed_deployments
+		dataType: int64
+		lineageTag: 57fa247a-da58-538b-a081-7cf6e87e907f
+		summarizeBy: none
+		sourceColumn: failed_deployments
+
+		annotation SummarizationSetBy = Automatic
+
+	column change_failure_rate_pct
+		dataType: double
+		lineageTag: e8bc3a5a-c11d-58b4-9b50-4cae1a0d060c
+		summarizeBy: none
+		sourceColumn: change_failure_rate_pct
+
+		annotation SummarizationSetBy = Automatic
+
+	column mttr_median_hours
+		dataType: double
+		lineageTag: 14c231d5-a0fa-5a90-adf0-f61debc12219
+		summarizeBy: none
+		sourceColumn: mttr_median_hours
+
+		annotation SummarizationSetBy = Automatic
+
+	column mttr_sample_size
+		dataType: double
+		lineageTag: 27ba5dca-1432-5df5-8539-2696557f8d3f
+		summarizeBy: none
+		sourceColumn: mttr_sample_size
+
+		annotation SummarizationSetBy = Automatic
+
+	column mttr_available
+		dataType: boolean
+		lineageTag: 47ebc48e-b06e-58c5-aa9d-9d05c5b92739
+		summarizeBy: none
+		sourceColumn: mttr_available
+
+		annotation SummarizationSetBy = Automatic
+
+	column median_build_minutes
+		dataType: double
+		lineageTag: f572d69a-af12-55f1-b9eb-2878bcaf8d15
+		summarizeBy: none
+		sourceColumn: median_build_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column data_quality_status
+		dataType: string
+		lineageTag: f5175470-90b2-5f76-b15a-2efbab105a53
+		summarizeBy: none
+		sourceColumn: data_quality_status
+
+		annotation SummarizationSetBy = Automatic
+
+	column notes
+		dataType: string
+		lineageTag: 13c9cdc7-99db-53ef-984f-b2b6db12c649
+		summarizeBy: none
+		sourceColumn: notes
+
+		annotation SummarizationSetBy = Automatic
+
+	column month_start
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 48fe8cf9-6314-5dda-9899-e6446d2d1a09
+		summarizeBy: none
+		sourceColumn: month_start
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DoraServiceMonth = m
+		mode: import
+		source =
+					let
+						Source = Csv.Document(
+							File.Contents(GoldFolder & "\dora_service_month.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+						),
+						Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+						Cleaned = Table.ReplaceValue(
+							Promoted,
+							"",
+							null,
+							Replacer.ReplaceValue,
+							Table.ColumnNames(Promoted)
+						),
+						Typed = Table.TransformColumnTypes(
+							Cleaned,
+							{
+								{"project_sk", type text},
+								{"project_name", type text},
+								{"reporting_month", type text},
+								{"grain", type text},
+								{"days_in_month", Int64.Type},
+								{"deployment_count", Int64.Type},
+								{"deployment_frequency_per_day", type number},
+								{"lead_time_median_hours", type number},
+								{"lead_time_sample_size", type number},
+								{"lead_time_available", type logical},
+								{"failed_deployments", Int64.Type},
+								{"change_failure_rate_pct", type number},
+								{"mttr_median_hours", type number},
+								{"mttr_sample_size", type number},
+								{"mttr_available", type logical},
+								{"median_build_minutes", type number},
+								{"data_quality_status", type text},
+								{"notes", type text}
+							}
+						),
+						WithDate = Table.AddColumn(Typed, "month_start", each Date.FromText([reporting_month] & "-01"), type date)
+					in
+						WithDate
+
+	annotation PBI_ResultType = Table
+	measure 'Deployments' = SUM ( DoraServiceMonth[deployment_count] )
+		lineageTag: ee67923f-27bc-583b-9600-13cb55941452
+		formatString: #,0
+
+	measure 'Active Months' = DISTINCTCOUNT ( DoraServiceMonth[reporting_month] )
+		lineageTag: 3174dd23-c789-509b-971d-6841bbaf688e
+		formatString: #,0
+
+	measure 'Failed Deployments' = SUM ( DoraServiceMonth[failed_deployments] )
+		lineageTag: 9bdc057b-1dd3-54d4-989f-744893494aeb
+		formatString: #,0
+
+	measure 'Deployment Frequency (per day)' = DIVIDE ( [Deployments], SUM ( DoraServiceMonth[days_in_month] ) )
+		lineageTag: ffc8eee9-3fe3-5870-96c1-bc4a4a0d7a8a
+		formatString: 0.00
+
+	measure 'Deployment Frequency (per project-month)' = DIVIDE ( [Deployments], COUNTROWS ( DoraServiceMonth ) )
+		lineageTag: b18cd233-b5e0-5e3b-9672-a47458c30c00
+		formatString: 0.0
+
+	measure 'Lead Time for Changes (median h)' = CALCULATE ( MEDIAN ( FactCommitLink[lead_time_hours] ), FactCommitLink[is_valid_lead_time] = TRUE () )
+		lineageTag: aed6cf63-7001-5096-9288-1596e0bdaa35
+		formatString: 0.0 "h"
+
+	measure 'Lead Time Sample' = CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_valid_lead_time] = TRUE () )
+		lineageTag: b2c84af3-192a-5746-a33c-1d00dc9a5821
+		formatString: #,0
+
+	measure 'Commit Link Coverage %' = DIVIDE ( CALCULATE ( COUNTROWS ( FactCommitLink ), FactCommitLink[is_linkable] = TRUE () ), COUNTROWS ( FactCommitLink ) )
+		lineageTag: 13fe59ab-1b94-5729-92cd-2ebe19437f22
+		formatString: 0.0%
+
+	measure 'Change Failure Rate %' = DIVIDE ( [Failed Deployments], [Deployments] )
+		lineageTag: ca9f5dcc-1732-5212-a360-389877f0cc64
+		formatString: 0.00%
+
+	measure 'Deployment Related Incidents' = CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )
+		lineageTag: 738ff983-74e6-5773-a5c9-2e07fad76cae
+		formatString: #,0
+
+	measure 'MTTR (median h)' = CALCULATE ( MEDIAN ( FactIncident[restore_hours] ), FactIncident[caused_by_deployment] = 1 )
+		lineageTag: ae9b3b88-658f-580e-9aff-82214ec22f61
+		formatString: 0.0 "h"
+
+	measure 'MTTR Sample' = CALCULATE ( COUNTROWS ( FactIncident ), FactIncident[caused_by_deployment] = 1 )
+		lineageTag: c59d37a7-0b5d-5bbd-9f65-3a38c2e60512
+		formatString: #,0
+
+	measure 'Sample Size Note' = "Lead time n=" & FORMAT ( [Lead Time Sample], "#,##0" ) & "  |  MTTR n=" & FORMAT ( [MTTR Sample], "#,##0" ) & "  |  Link coverage " & FORMAT ( [Commit Link Coverage %], "0.0%" )
+		lineageTag: ec7bde7b-346d-52a3-b54f-a388e4160e8f
+
+	measure 'Data Quality Status' = IF ( ISBLANK ( [Lead Time for Changes (median h)] ) || ISBLANK ( [MTTR (median h)] ), "Partial - see caveats", "Validated" )
+		lineageTag: c06c6012-fb33-5c70-8993-36ad18b42dbe

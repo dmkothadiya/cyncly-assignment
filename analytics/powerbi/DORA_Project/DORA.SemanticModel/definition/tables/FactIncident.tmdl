@@ -1,0 +1,107 @@
+table FactIncident
+	lineageTag: 23e8e264-86b9-59e8-93d6-022409503242
+
+	column workitem_id
+		dataType: string
+		lineageTag: 6166a636-3954-5817-8d7f-afe16f7fcabe
+		summarizeBy: none
+		sourceColumn: workitem_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column project_sk
+		dataType: string
+		lineageTag: ffba892e-d861-5028-b2e6-de0df931dcfd
+		summarizeBy: none
+		sourceColumn: project_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column project_name
+		dataType: string
+		lineageTag: e82359c2-673f-5252-873d-ad6a70b3881e
+		summarizeBy: none
+		sourceColumn: project_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column caused_by_deployment
+		dataType: int64
+		lineageTag: 4b8b0915-0106-5d77-a4be-d994a0c8b5f0
+		summarizeBy: none
+		sourceColumn: caused_by_deployment
+
+		annotation SummarizationSetBy = Automatic
+
+	column started_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn:ss
+		lineageTag: cb99736b-b13b-5767-8438-9d899ecf3425
+		summarizeBy: none
+		sourceColumn: started_at
+
+		annotation SummarizationSetBy = Automatic
+
+	column resolved_at
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn:ss
+		lineageTag: 3260a9d3-9f39-543a-b8c2-4daa6adcbb86
+		summarizeBy: none
+		sourceColumn: resolved_at
+
+		annotation SummarizationSetBy = Automatic
+
+	column restore_hours
+		dataType: double
+		lineageTag: bd4bf114-75b7-5441-a177-49683080e796
+		summarizeBy: none
+		sourceColumn: restore_hours
+
+		annotation SummarizationSetBy = Automatic
+
+	column reporting_month
+		dataType: string
+		lineageTag: ba74b55a-ac00-52ba-80a8-0ca396a85451
+		summarizeBy: none
+		sourceColumn: reporting_month
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FactIncident = m
+		mode: import
+		source =
+					let
+						Source = Csv.Document(
+							File.Contents(GoldFolder & "\fact_incident.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+						),
+						Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+						Cleaned = Table.ReplaceValue(
+							Promoted,
+							"",
+							null,
+							Replacer.ReplaceValue,
+							Table.ColumnNames(Promoted)
+						),
+						Typed = Table.TransformColumnTypes(
+							Cleaned,
+							{
+								{"workitem_id", type text},
+								{"project_sk", type text},
+								{"project_name", type text},
+								{"caused_by_deployment", Int64.Type},
+								{"restore_hours", type number},
+								{"reporting_month", type text}
+							}
+						),
+						WithTimestamps = Table.TransformColumns(
+							Typed,
+							{
+								{"started_at", each if _ = null then null else DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime},
+								{"resolved_at", each if _ = null then null else DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime}
+							}
+						)
+					in
+						WithTimestamps
+
+	annotation PBI_ResultType = Table
