@@ -1,0 +1,21 @@
+name: 'Setup .NET 8'
+description: 'Configures the .NET SDK, restores dependencies, and exposes a standard build environment.'
+inputs:
+  dotnet-version:
+    description: '.NET SDK version to install'
+    required: true
+    default: '8.0.x'
+runs:
+  using: 'composite'
+  steps:
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9
+      with:
+        dotnet-version: ${{ inputs.dotnet-version }}
+        cache: true
+        cache-dependency-path: |
+          **/*.csproj
+          **/packages.lock.json
+    - name: Restore dependencies
+      shell: bash
+      run: dotnet restore CynclyAssignment.sln

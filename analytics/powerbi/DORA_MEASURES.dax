@@ -1,0 +1,26 @@
+Build Runs (Deployment Proxy) =
+SUM ( DoraMetrics[deployment_count] )
+
+Deployment-Related Incidents =
+SUM ( DoraMetrics[deployment_related_incidents] )
+
+Limited Change Failure Rate Proxy =
+DIVIDE (
+    [Deployment-Related Incidents],
+    [Build Runs (Deployment Proxy)]
+)
+
+Mean Time to Restore (Hours) =
+DIVIDE (
+    SUMX (
+        DoraMetrics,
+        DoraMetrics[mean_time_to_restore_hours] * DoraMetrics[total_incidents]
+    ),
+    SUM ( DoraMetrics[total_incidents] )
+)
+
+Lead Time for Changes (Hours) =
+BLANK ()
+
+Reporting Months =
+DISTINCTCOUNT ( DoraMetrics[reporting_month] )

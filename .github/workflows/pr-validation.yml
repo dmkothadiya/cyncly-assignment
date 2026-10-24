@@ -1,0 +1,53 @@
+name: PR Validation
+
+on:
+  pull_request:
+    branches:
+      - main
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Build, test, and coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+
+      - name: Setup .NET
+        uses: ./.github/actions/setup-dotnet
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Restore solution
+        run: dotnet restore CynclyAssignment.sln
+
+      - name: Build solution (Release)
+        run: dotnet build CynclyAssignment.sln --configuration Release --no-restore
+
+      - name: Run unit tests with coverage
+        run: dotnet test CynclyAssignment.sln --configuration Release --no-build --collect:"XPlat Code Coverage" --results-directory TestResults
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: coverage-report
+          path: TestResults
+          if-no-files-found: error
+
+      - name: Upload build logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: build-logs
+          path: |
+            **/bin/
+            **/obj/
+          if-no-files-found: warn
