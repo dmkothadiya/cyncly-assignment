@@ -196,8 +196,9 @@ Assumption and limitation:
 - Power BI Desktop guide and starter query/measures: `analytics/powerbi/`
 - Validation evidence: `docs/VALIDATION_EVIDENCE.md`
 - AI usage statement: `docs/AI_USE_STATEMENT.md`
-- Executive recommendation PDF: `docs/EXECUTIVE_RECOMMENDATION.pdf`
-- Leadership strategy PDF: `docs/DEVOPS_STRATEGY_FOR_LEADERSHIP.pdf`
+- Executive recommendation PDF: `docs/EXECUTIVE_RECOMMENDATION.pdf` (2 pages)
+- CTO briefing PDF: `docs/DEVOPS_STRATEGY_FOR_LEADERSHIP.pdf` (10 pages - architecture,
+  operating model, governance, roadmap, risks, decisions)
 - Executive presentation: `presentation/EXECUTIVE_PRESENTATION.pptx`
 
 ## Synthetic data notice

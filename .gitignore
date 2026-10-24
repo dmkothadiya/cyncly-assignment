@@ -26,6 +26,7 @@ analytics/powerbi/DORA_Project/**/diagramLayout.json
 analytics/powerbi/DORA_Project/**/definition/cultures/
 analytics/powerbi/DORA_Project/DORA.Report/.platform
 analytics/powerbi/DORA_Project/DORA.Report/StaticResources/
+scripts/generate_cto_briefing_pdf.py
 analytics/bronze/*.csv
 analytics/silver/*.csv
 analytics/silver/rejected_rows.json
