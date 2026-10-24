@@ -58,7 +58,7 @@ than once. That is the true grain of the source, not a duplicate.
 | Window | Month of build completion |
 | Exclusions | Links whose build has no end timestamp; links where the build finished **before** the commit was authored (logically impossible, rejected with reason `association_precedes_commit`) |
 | Published column | `lead_time_median_hours`, `lead_time_sample_size` |
-| Limitation | Association grain: a commit rebuilt three times contributes three observations. 25 links point at builds rejected in Silver and are excluded. |
+| Limitation | Association grain: a commit rebuilt three times contributes three observations. 12 links point at builds that finished before the commit was authored and are excluded. |
 
 ### CFR - Change Failure Rate
 
@@ -131,9 +131,9 @@ metric may not be redefined inside a dashboard.
 
 | # | Observation | Impact | Treatment |
 |---|---|---|---|
-| 1 | 8 builds have no completion timestamp; 5 have end before start | Excluded from deployment counts | Rejected in Silver with reason |
-| 2 | 1 commit-to-build association is chronologically impossible | Removed from lead time | Rejected with `association_precedes_commit` |
-| 3 | 25 commit links reference builds rejected in Silver | Lead-time coverage is partial (84% link coverage) | Reported as `commit_links_without_deployment_row` |
+| 1 | 5 builds end before they start; no build lacks a completion timestamp | Excluded from deployment counts | Rejected in Silver as `end_before_start` |
+| 2 | 12 commit-to-build associations are chronologically impossible | Removed from lead time | Rejected with `association_precedes_commit` |
+| 3 | 3 commit links reference a `build_sk` with no row in Silver builds | Lead-time coverage is 98.0% (149 of 152 links) | Reported as `commit_links_without_deployment_row` |
 | 4 | 3 incidents belong to projects not in the project sheet | CFR understated for those projects | Held under `unmapped::` dimension members |
 | 5 | Only 3 deployment-caused incidents exist and all have an identical restore time of 2.03 h | MTTR is not statistically meaningful | Published with `mttr_sample_size`; flagged |
 | 6 | Same commit appears with different `author_date` values across snapshots | Ambiguity in "true" commit time | Latest ingestion wins; documented, not hidden |

@@ -66,7 +66,7 @@ Why the row counts differ at each layer — and they should:
 | Bronze builds | 350 | raw sheet |
 | Silver builds | 345 | 5 builds end before they start |
 | Bronze commits | 164 | raw sheet, includes re-reported snapshots |
-| Silver commits | 160 | duplicate (commit, build) pairs resolved by latest ingestion |
+| Silver commits | 164 | duplicate (commit, build) pairs resolved by latest ingestion |
 | Gold grain | 9 | 2 projects x 6 months, minus months with no builds |
 
 If a number moves, treat it as a regression until proven otherwise.

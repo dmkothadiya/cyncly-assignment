@@ -52,10 +52,10 @@ and Gold table.
 
 | Finding | Count | Treatment |
 |---|---|---|
-| Builds with no completion timestamp | 8 | Rejected in Silver |
-| Builds where end precedes start | 5 | Rejected in Silver |
-| Commit-to-build associations that are chronologically impossible | 1 | Rejected with reason `association_precedes_commit` |
-| Commit links pointing at rejected builds | 25 | Retained as rows, excluded from lead time |
+| Builds where end precedes start | 5 | Rejected in Silver as `end_before_start` |
+| Commit-to-build associations that are chronologically impossible | 12 | Rejected with reason `association_precedes_commit` |
+| Commit links pointing at a `build_sk` with no Silver row | 3 | Retained as rows, excluded from lead time |
+| Timestamps written with two different precisions in one column | 7 rows | Parsed with `format="mixed"`; an inferred single format silently dropped them |
 | Incidents whose project is absent from the project sheet | 3 | Held under an `unmapped::` dimension member |
 | Deployment-caused incidents with an identical restore time (2.03 h) | 3 | Published, flagged as not statistically meaningful |
 
