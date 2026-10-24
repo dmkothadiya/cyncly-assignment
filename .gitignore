@@ -30,11 +30,14 @@ analytics/powerbi/DORA.SemanticModel/
 !analytics/gold/fact_incident.csv
 !analytics/gold/dora_service_month.csv
 !analytics/gold/dora_period_summary.csv
+!analytics/gold/pipeline_lineage.csv
+!analytics/gold/dq_check_results.csv
 !analytics/quality-checks/dq_results.json
 !analytics/quality-checks/silver_profile.json
 !analytics/quality-checks/run_quality_checks.py
 !analytics/dashboard/dora_baseline_dashboard.png
 !analytics/dashboard/dora_powerbi_desktop.png
+!analytics/dashboard/dora_powerbi_lineage.png
 !analytics/powerbi/DORA_Data.xlsx
 !docs/EXECUTIVE_RECOMMENDATION.pdf
 !docs/STRATEGY_PACKAGE.pdf

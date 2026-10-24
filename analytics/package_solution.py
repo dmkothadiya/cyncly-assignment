@@ -125,7 +125,8 @@ def stage() -> Path:
 
     for name in ("dim_project.csv", "fact_deployment.csv", "fact_commit_link.csv",
                  "fact_incident.csv", "dora_service_month.csv",
-                 "dora_period_summary.csv"):
+                 "dora_period_summary.csv", "pipeline_lineage.csv",
+                 "dq_check_results.csv"):
         shutil.copy(ANALYTICS / "gold" / name, analytics / "gold" / name)
 
     for name in ("dq_results.json", "silver_profile.json"):
@@ -151,7 +152,8 @@ def stage() -> Path:
     if project_source.exists():
         shutil.copytree(project_source, analytics / "powerbi" / "DORA_Project")
 
-    for png_name in ("dora_baseline_dashboard.png", "dora_powerbi_desktop.png"):
+    for png_name in ("dora_baseline_dashboard.png", "dora_powerbi_desktop.png",
+                     "dora_powerbi_lineage.png"):
         png = ANALYTICS / "dashboard" / png_name
         if png.exists():
             shutil.copy(png, analytics / "dashboard" / png_name)

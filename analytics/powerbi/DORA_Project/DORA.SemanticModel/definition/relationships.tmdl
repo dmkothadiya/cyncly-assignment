@@ -21,3 +21,11 @@ relationship e7fc207f-8f75-54d6-ba36-eb1213e19a69
 relationship 722134d4-acbf-542f-ad22-12b6221399db
 	fromColumn: FactDeployment.deployment_date
 	toColumn: DimDate.Date
+
+relationship 97c8dca1-a10d-5c6e-b1f0-f9b19d5533af
+	fromColumn: FactCommitLink.deployed_date
+	toColumn: DimDate.Date
+
+relationship f4c65207-a63b-5603-b79c-e9f1075f81a6
+	fromColumn: FactIncident.started_date
+	toColumn: DimDate.Date

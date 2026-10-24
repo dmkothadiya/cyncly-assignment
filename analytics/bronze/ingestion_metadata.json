@@ -1,7 +1,7 @@
 {
   "source_workbook": "docs/Case Study - DORA Metrics Data.xlsx",
   "source_sha256": "493ae0cddf7a52f61edb5d49b402fd86bdf21b22bbae93514f025f31f3036846",
-  "ingested_at_utc": "2026-10-24T08:57:55.754890+00:00",
+  "ingested_at_utc": "2026-10-24T13:46:42.177502+00:00",
   "granularity": "one row per source row, values preserved as text",
   "tables": {
     "commits": {

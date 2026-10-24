@@ -156,10 +156,10 @@ def dq_02_temporal_validity(tables: dict[str, pd.DataFrame]) -> Check:
     links = tables["fact_commit_link"].copy()
     incidents = tables["fact_incident"].copy()
 
-    deployments["started"] = pd.to_datetime(deployments["pipeline_start_time"], errors="coerce", utc=True)
-    deployments["completed"] = pd.to_datetime(deployments["pipeline_end_time"], errors="coerce", utc=True)
-    incidents["started"] = pd.to_datetime(incidents["started_at"], errors="coerce", utc=True)
-    incidents["resolved"] = pd.to_datetime(incidents["resolved_at"], errors="coerce", utc=True)
+    deployments["started"] = pd.to_datetime(deployments["pipeline_start_time"], errors="coerce", utc=True, format="mixed")
+    deployments["completed"] = pd.to_datetime(deployments["pipeline_end_time"], errors="coerce", utc=True, format="mixed")
+    incidents["started"] = pd.to_datetime(incidents["started_at"], errors="coerce", utc=True, format="mixed")
+    incidents["resolved"] = pd.to_datetime(incidents["resolved_at"], errors="coerce", utc=True, format="mixed")
 
     null_starts = int(deployments["started"].isna().sum())
     null_ends = int(deployments["completed"].isna().sum())
@@ -258,7 +258,7 @@ def dq_03_metric_reconciliation(tables: dict[str, pd.DataFrame]) -> Check:
 
     valid_links = links[truthy(links["is_valid_lead_time"])].copy()
     valid_links["reporting_month"] = (
-        pd.to_datetime(valid_links["deployed_at"], errors="coerce", utc=True)
+        pd.to_datetime(valid_links["deployed_at"], errors="coerce", utc=True, format="mixed")
         .dt.tz_localize(None)
         .dt.to_period("M")
         .astype(str)
@@ -354,6 +354,27 @@ def report(results: list[Check], destination: Path | None) -> None:
             encoding="utf-8",
         )
         print(f"Wrote {destination}")
+
+        # Publish the outcome as a Gold table so the report reads the real status
+        # instead of repeating a caption that has to be edited by hand.
+        gold = destination.parent.parent / "gold" if destination.parent.name == "quality-checks" else None
+        if gold is not None and gold.is_dir():
+            frame = pd.DataFrame([
+                {
+                    "check_id": r.check_id,
+                    "name": r.name,
+                    "question": r.question,
+                    "status": r.status,
+                    "checks_passed": 0 if r.status == "FAIL" else 1,
+                    "detail": (
+                        "; ".join(r.errors[:2]) if r.errors
+                        else "; ".join(f"{k}={v}" for k, v in list(r.metrics.items())[:3])
+                    ),
+                }
+                for r in results
+            ])
+            frame.to_csv(gold / "dq_check_results.csv", index=False)
+            print(f"Wrote {gold / 'dq_check_results.csv'}")
 
 
 # ------------------------------------------------------------ negative test

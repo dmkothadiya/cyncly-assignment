@@ -20,13 +20,13 @@
                 "Column": {
                   "Expression": {
                     "SourceRef": {
-                      "Entity": "DoraServiceMonth"
+                      "Entity": "FactCommitLink"
                     }
                   },
                   "Property": "reporting_month"
                 }
               },
-              "queryRef": "DoraServiceMonth.reporting_month",
+              "queryRef": "FactCommitLink.reporting_month",
               "nativeQueryRef": "reporting_month"
             }
           ]

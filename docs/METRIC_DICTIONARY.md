@@ -21,7 +21,7 @@ The workbook contains four worksheets: `commits`, `builds`, `incidents`, `projec
 
 An earlier version of this document said the workbook had no usable
 commit-to-deployment relation. **That was wrong.** `commits.build_sk` matches
-`builds.build_id`: 134 of 160 commit rows resolve to a completed build, giving 84%
+`builds.build_id`: 149 of 152 commit links resolve to a completed build, giving 98%
 link coverage and a usable lead-time signal.
 
 The real limitation is different and is recorded in the spec: a completed build is

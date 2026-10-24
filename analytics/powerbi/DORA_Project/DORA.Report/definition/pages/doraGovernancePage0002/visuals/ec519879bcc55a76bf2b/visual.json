@@ -1,0 +1,105 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "ec519879bcc55a76bf2b",
+  "position": {
+    "x": 1170,
+    "y": 123,
+    "z": 11,
+    "width": 720,
+    "height": 400,
+    "tabOrder": 11
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DqCheckResult"
+                    }
+                  },
+                  "Property": "check_id"
+                }
+              },
+              "queryRef": "DqCheckResult.check_id",
+              "nativeQueryRef": "check_id",
+              "displayName": "ID"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DqCheckResult"
+                    }
+                  },
+                  "Property": "name"
+                }
+              },
+              "queryRef": "DqCheckResult.name",
+              "nativeQueryRef": "name",
+              "displayName": "Check"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DqCheckResult"
+                    }
+                  },
+                  "Property": "status"
+                }
+              },
+              "queryRef": "DqCheckResult.status",
+              "nativeQueryRef": "status",
+              "displayName": "Status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DqCheckResult"
+                    }
+                  },
+                  "Property": "detail"
+                }
+              },
+              "queryRef": "DqCheckResult.detail",
+              "nativeQueryRef": "detail",
+              "displayName": "Evidence"
+            }
+          ]
+        }
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Executable data-quality gate'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

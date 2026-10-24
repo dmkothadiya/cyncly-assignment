@@ -1,5 +1,5 @@
 {
-  "generated_at_utc": "2026-10-24T11:16:02.076611+00:00",
+  "generated_at_utc": "2026-10-24T13:47:57.243807+00:00",
   "checks_run": 3,
   "checks_failed": 0,
   "overall_status": "PASS",
@@ -11,7 +11,7 @@
       "status": "PASS",
       "errors": [],
       "findings": [
-        "25 commit links reference a deployment_id absent from fact_deployment (build rejected in the silver layer; excluded from lead time)"
+        "3 commit links reference a deployment_id absent from fact_deployment (build rejected in the silver layer; excluded from lead time)"
       ],
       "metrics": {
         "projects": 4,
@@ -28,7 +28,7 @@
           "dora_service_month(project_sk, reporting_month)": 0,
           "fact_commit_link(commit_id, deployment_id)": 0
         },
-        "commit_links_without_deployment_row": 25
+        "commit_links_without_deployment_row": 3
       }
     },
     {
@@ -44,7 +44,7 @@
         "deployments_end_before_start": 0,
         "incidents_null_timestamps": 0,
         "incidents_resolved_before_started": 0,
-        "commit_links_checked": 134,
+        "commit_links_checked": 149,
         "commit_links_negative_lead_time": 0,
         "commit_links_null_lead_time": 0
       }
@@ -65,8 +65,8 @@
         "lead_time_median_mismatches": 0,
         "lead_time_sample_mismatches": 0,
         "failed_deployment_mismatches": 0,
-        "deployments_in_grain": 342,
-        "deployments_in_summary": 342
+        "deployments_in_grain": 345,
+        "deployments_in_summary": 345
       }
     }
   ]

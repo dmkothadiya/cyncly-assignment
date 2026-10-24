@@ -1,0 +1,4 @@
+check_id,name,question,status,checks_passed,detail
+DQ-01,Referential integrity and grain uniqueness,"Does every fact resolve to a dimension row, and is each declared grain unique?",PASS,1,"projects=4; duplicate_project_keys=0; orphan_rows_by_table={'fact_deployment': 0, 'fact_commit_link': 0, 'fact_incident': 0, 'dora_service_month': 0}"
+DQ-02,Temporal validity,Are timestamps ordered and are published lead times non-negative?,PASS,1,deployments_null_start=0; deployments_null_end=0; deployments_end_before_start=0
+DQ-03,Metric reconciliation,Do the published DORA values recompute from the facts at the declared grain?,PASS,1,metric_rows_not_matching_fact_grain=0; deployment_count_mismatches=0; deployment_frequency_mismatches=0

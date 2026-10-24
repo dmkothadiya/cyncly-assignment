@@ -88,7 +88,7 @@ the checks can actually fail. Rules and known source defects are in
 
 The Power BI layer is in `analytics/powerbi/`:
 
-- `DORA_Project/DORA.pbip` - **the report**. A Power BI project (PBIR report + TMDL model): 12 visuals on one 1920x1080 page, 6 tables, 6 relationships, 14 measures. Open it in Desktop and press **Refresh now**
+- `DORA_Project/DORA.pbip` - **the report**. A Power BI project (PBIR report + TMDL model): 19 visuals on two 1920x1080 pages, 8 tables, 8 relationships, 17 measures. Open it in Desktop and press **Refresh now**
 - `build_pbip.py` - generates the project (`DORA.Report/` + `DORA.SemanticModel/`)
 - `generate_tmdl_model.py` - generates the TMDL model from the actual Gold columns
 - `validate_pbip.py` - validates every definition file against the Microsoft schemas and resolves every visual field reference against the model
@@ -106,7 +106,7 @@ python analytics/powerbi/validate_pbip.py           # schemas + field references
 ```
 
 `analytics/dashboard/dora_powerbi_desktop.png` is a real screenshot of this project
-open in Power BI Desktop, showing 38.0 / 18.2 h / 0.88% / 2.0 h.
+open in Power BI Desktop, showing 38.33 / 20.5 h / 0.87% / 2.0 h.
 `analytics/dashboard/dora_baseline_dashboard.png` is the earlier layout reference
 rendered from the same Gold numbers - useful for comparison, not a Desktop capture.
 

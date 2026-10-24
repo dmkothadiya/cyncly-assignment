@@ -17,6 +17,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import shutil
 import uuid
@@ -34,7 +35,34 @@ GREY = "#4A5568"
 LIGHT = "#F2F5F8"
 
 PAGE = "doraBaselinePage0001"
+PAGES = [
+    (PAGE, "DORA baseline"),
+    ("doraGovernancePage0002", "Grain, lineage & quality"),
+]
 NAMESPACE = uuid.UUID("2f5b1a10-4c33-4d0a-9c1e-7a1b2c3d4e5f")
+
+
+def read_gold(name: str) -> list[dict[str, str]]:
+    with (ROOT / "analytics" / "gold" / name).open(encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
+def headline() -> tuple[str, str]:
+    """Header and footer text taken from Gold, so a refresh cannot leave them stale."""
+    summary = read_gold("dora_period_summary.csv")[0]
+    checks = read_gold("dq_check_results.csv")
+    passed = sum(1 for row in checks if row["status"] == "PASS")
+    subtitle = (
+        f"{summary['projects']} projects  |  {summary['total_deployments']} completed builds  |  "
+        f"{summary['period_start']} to {summary['period_end']}  |  "
+        "deployment proxy, not a release event"
+    )
+    footer = (
+        f"Built from the Gold layer  |  {passed}/{len(checks)} data-quality checks passed  |  "
+        f"{summary['lead_time_sample_size']} lead-time observations, "
+        f"{summary['mttr_sample_size']} MTTR observations"
+    )
+    return subtitle, footer
 
 SCHEMA = {
     "pbip": "https://developer.microsoft.com/json-schemas/fabric/pbip/pbipProperties/1.0.0/schema.json",
@@ -75,8 +103,19 @@ def projection(field: dict, query_ref: str, display: str | None = None) -> dict:
     return item
 
 
-def container(name, x, y, w, h, z, visual) -> dict:
+def sort_by(*fields: tuple[str, str, str]) -> dict:
+    """Sort clause for a visual query; without it a table renders in load order."""
     return {
+        "sortDefinition": {
+            "sort": [
+                {"field": column(entity, name), "direction": direction}
+                for entity, name, direction in fields
+            ]
+        }
+    }
+
+
+def container(name, x, y, w, h, z, visual) -> dict:    return {
         "$schema": SCHEMA["visual"],
         "name": name,
         "position": {"x": x, "y": y, "z": z, "width": w, "height": h, "tabOrder": z},
@@ -142,16 +181,16 @@ def card(name, x, y, w, h, z, title, accent) -> dict:
     })
 
 
-def build_visuals() -> list[dict]:
+def build_baseline_visuals() -> list[dict]:
     visuals: list[dict] = []
+    subtitle, footer = headline()
 
     visuals.append(textbox(vid("header"), 0, 0, 1920, 105, 0,
                            [run(" ", "8pt", NAVY)], background=NAVY))
     visuals.append(textbox(vid("title"), 30, 16, 1350, 46, 1,
                            [run("DORA baseline  |  July - December 2024", "20pt", "#FFFFFF", True)]))
-    visuals.append(textbox(vid("subtitle"), 30, 62, 1500, 34, 2,
-                           [run("2 projects  |  342 completed builds  |  deployment proxy, "
-                                "not a release event", "10pt", "#C9D6E3")]))
+    visuals.append(textbox(vid("subtitle"), 30, 62, 1860, 34, 2,
+                           [run(subtitle, "10pt", "#C9D6E3")]))
 
     kpis = [
         ("Deployment Frequency (per project-month)", 30, TEAL),
@@ -181,9 +220,12 @@ def build_visuals() -> list[dict]:
     visuals.append(container(vid("leadtime"), 1104, 288, 786, 288, 21, {
         "visualType": "columnChart",
         "query": {"queryState": {
+            # The axis comes from the fact table itself: DoraServiceMonth[reporting_month]
+            # has no filter path to FactCommitLink, so it made every bar repeat the
+            # period-wide median instead of showing each month.
             "Category": {"projections": [projection(
-                column("DoraServiceMonth", "reporting_month"),
-                "DoraServiceMonth.reporting_month")]},
+                column("FactCommitLink", "reporting_month"),
+                "FactCommitLink.reporting_month")]},
             "Y": {"projections": [projection(
                 measure("DoraServiceMonth", "Lead Time for Changes (median h)"),
                 "DoraServiceMonth.Lead Time for Changes (median h)")]},
@@ -203,9 +245,10 @@ def build_visuals() -> list[dict]:
         ("reporting_month", "Month"),
         ("deployment_count", "Builds"),
         ("lead_time_median_hours", "Lead h"),
-        ("lead_time_sample_size", "n"),
+        ("lead_time_sample_size", "Lead n"),
         ("change_failure_rate_pct", "CFR %"),
         ("mttr_median_hours", "MTTR h"),
+        ("mttr_sample_size", "MTTR n"),
         ("data_quality_status", "Status"),
     ]
     visuals.append(container(vid("grain"), 30, 597, 1050, 294, 22, {
@@ -214,9 +257,14 @@ def build_visuals() -> list[dict]:
             projection(column("DoraServiceMonth", name), f"DoraServiceMonth.{name}", header)
             for name, header in table_fields
         ]}}},
+        # 8 pt keeps all nine grain rows visible without scrolling.
+        "objects": {
+            "values": [{"properties": {"fontSize": literal("8D")}}],
+            "columnHeaders": [{"properties": {"fontSize": literal("8D")}}],
+        },
         "visualContainerObjects": {
             "title": [{"properties": {"show": literal("true"), "text": literal(
-                "'Published grain: project x month'")}}],
+                "'Published grain: project x month (page 2 has every column)'")}}],
         },
     }))
 
@@ -233,8 +281,101 @@ def build_visuals() -> list[dict]:
                            background=LIGHT))
 
     visuals.append(textbox(vid("footer"), 30, 909, 1860, 40, 24,
-                           [run("Built from the Gold layer. Data quality: 3/3 "
-                                "data-quality checks passed.", "8pt", GREY)]))
+                           [run(footer, "8pt", GREY)]))
+    return visuals
+
+
+def build_governance_visuals() -> list[dict]:
+    """Page 2: every published column, plus the Bronze -> Silver -> Gold trail."""
+    visuals: list[dict] = []
+    subtitle, footer = headline()
+
+    visuals.append(textbox(vid("govHeader"), 0, 0, 1920, 105, 0,
+                           [run(" ", "8pt", NAVY)], background=NAVY))
+    visuals.append(textbox(vid("govTitle"), 30, 16, 1500, 46, 1,
+                           [run("Metric grain, lineage and data quality", "20pt", "#FFFFFF", True)]))
+    visuals.append(textbox(vid("govSubtitle"), 30, 62, 1860, 34, 2,
+                           [run(subtitle, "10pt", "#C9D6E3")]))
+
+    lineage_fields = [
+        ("layer", "Layer"),
+        ("table_name", "Table"),
+        ("rows_in", "In"),
+        ("rows_out", "Out"),
+        ("rows_dropped", "Dropped"),
+        ("rule", "Rule applied"),
+    ]
+    visuals.append(container(vid("lineageTable"), 30, 123, 1120, 400, 10, {
+        "visualType": "tableEx",
+        "query": {
+            "queryState": {"Values": {"projections": [
+                projection(column("PipelineLineage", name), f"PipelineLineage.{name}", header)
+                for name, header in lineage_fields
+            ]}},
+            **sort_by(("PipelineLineage", "layer", "Ascending")),
+        },
+        "visualContainerObjects": {
+            "title": [{"properties": {"show": literal("true"), "text": literal(
+                "'Bronze -> Silver -> Gold: what each layer kept and what it removed'")}}],
+        },
+    }))
+
+    dq_fields = [
+        ("check_id", "ID"),
+        ("name", "Check"),
+        ("status", "Status"),
+        ("detail", "Evidence"),
+    ]
+    visuals.append(container(vid("dqTable"), 1170, 123, 720, 400, 11, {
+        "visualType": "tableEx",
+        "query": {"queryState": {"Values": {"projections": [
+            projection(column("DqCheckResult", name), f"DqCheckResult.{name}", header)
+            for name, header in dq_fields
+        ]}}},
+        "visualContainerObjects": {
+            "title": [{"properties": {"show": literal("true"), "text": literal(
+                "'Executable data-quality gate'")}}],
+        },
+    }))
+
+    full_grain = [
+        ("project_name", "Project"),
+        ("reporting_month", "Month"),
+        ("grain", "Grain"),
+        ("days_in_month", "Days"),
+        ("deployment_count", "Builds"),
+        ("deployment_frequency_per_day", "DF / day"),
+        ("lead_time_median_hours", "Lead h"),
+        ("lead_time_sample_size", "Lead n"),
+        ("lead_time_available", "Lead obs?"),
+        ("failed_deployments", "Failed"),
+        ("change_failure_rate_pct", "CFR %"),
+        ("mttr_median_hours", "MTTR h"),
+        ("mttr_sample_size", "MTTR n"),
+        ("mttr_available", "MTTR obs?"),
+        ("median_build_minutes", "Build min"),
+        ("data_quality_status", "Status"),
+    ]
+    visuals.append(container(vid("fullGrain"), 30, 543, 1860, 350, 20, {
+        "visualType": "tableEx",
+        "query": {
+            "queryState": {"Values": {"projections": [
+                projection(column("DoraServiceMonth", name), f"DoraServiceMonth.{name}", header)
+                for name, header in full_grain
+            ]}},
+            **sort_by(
+                ("DoraServiceMonth", "project_name", "Ascending"),
+                ("DoraServiceMonth", "reporting_month", "Ascending"),
+            ),
+        },
+        "visualContainerObjects": {
+            "title": [{"properties": {"show": literal("true"), "text": literal(
+                "'dora_service_month: every published column at project x month grain'")}}],
+        },
+    }))
+
+    visuals.append(textbox(vid("govFooter"), 30, 909, 1860, 40, 24,
+                           [run(footer, "8pt", GREY)]))
     return visuals
 
 
@@ -288,29 +429,38 @@ def main() -> int:
     })
     write_json(report_dir / "definition" / "pages" / "pages.json", {
         "$schema": SCHEMA["pages"],
-        "pageOrder": [PAGE],
+        "pageOrder": [name for name, _ in PAGES],
         "activePageName": PAGE,
     })
-    write_json(report_dir / "definition" / "pages" / PAGE / "page.json", {
-        "$schema": SCHEMA["page"],
-        "name": PAGE,
-        "displayName": "DORA baseline",
-        "displayOption": "FitToPage",
-        "height": 1080,
-        "width": 1920,
-    })
 
-    visuals = [] if args.no_visuals else build_visuals()
-    for visual in visuals:
-        write_json(
-            report_dir / "definition" / "pages" / PAGE / "visuals" / visual["name"] / "visual.json",
-            visual,
-        )
+    builders = {
+        PAGE: build_baseline_visuals,
+        "doraGovernancePage0002": build_governance_visuals,
+    }
+    total = 0
+    for page_name, display_name in PAGES:
+        write_json(report_dir / "definition" / "pages" / page_name / "page.json", {
+            "$schema": SCHEMA["page"],
+            "name": page_name,
+            "displayName": display_name,
+            "displayOption": "FitToPage",
+            "height": 1080,
+            "width": 1920,
+        })
+        visuals = [] if args.no_visuals else builders[page_name]()
+        total += len(visuals)
+        for visual in visuals:
+            write_json(
+                report_dir / "definition" / "pages" / page_name / "visuals"
+                / visual["name"] / "visual.json",
+                visual,
+            )
 
     print(f"Wrote {TARGET.relative_to(ROOT)}")
     print(f"  model    : {len(list((model_dir / 'definition' / 'tables').glob('*.tmdl')))} TMDL tables")
-    print(f"  report   : page '{PAGE}' 1920x1080")
-    print(f"  visuals  : {len(visuals)}")
+    print(f"  report   : {len(PAGES)} page(s) 1920x1080 -> "
+          f"{', '.join(name for _, name in PAGES)}")
+    print(f"  visuals  : {total}")
     return 0
 
 

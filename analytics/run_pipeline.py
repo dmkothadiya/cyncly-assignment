@@ -28,11 +28,23 @@ PII_COLUMNS = {"author_name", "author_email", "committer_name", "committer_email
 
 
 def utc(series: pd.Series) -> pd.Series:
-    return pd.to_datetime(series, errors="coerce", utc=True)
+    """Parse timestamps whose text mixes precisions.
+
+    Without format="mixed" pandas infers a single format from the first non-null
+    value and coerces every row that differs to NaT - the source column holds both
+    "2024-09-04 15:01:48" and "2024-09-04 15:01:48.047", so whichever precision does
+    not match the first row would be dropped as if it were missing data.
+    """
+    return pd.to_datetime(series, errors="coerce", utc=True, format="mixed")
 
 
 def month_of(series: pd.Series) -> pd.Series:
-    return pd.to_datetime(series, utc=True).dt.tz_localize(None).dt.to_period("M").astype(str)
+    return (
+        pd.to_datetime(series, utc=True, format="mixed")
+        .dt.tz_localize(None)
+        .dt.to_period("M")
+        .astype(str)
+    )
 
 
 def write(df: pd.DataFrame, path: Path) -> None:
@@ -236,6 +248,92 @@ def silver(raw: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
 
 
 # --------------------------------------------------------------------------- gold
+def build_lineage(
+    *,
+    bronze_rows: dict[str, int],
+    silver_rows: dict[str, int],
+    rejects: pd.DataFrame,
+    dim_project: pd.DataFrame,
+    fact_deployment: pd.DataFrame,
+    fact_commit_link: pd.DataFrame,
+    fact_incident: pd.DataFrame,
+    dora: pd.DataFrame,
+    summary: pd.DataFrame,
+) -> pd.DataFrame:
+    """Describe what each medallion layer holds and what the next layer removed.
+
+    The dashboard has to show the Bronze/Silver/Gold story from data rather than
+    from a caption, so the counts travel with the pipeline that produced them.
+    """
+
+    def dropped(table: str) -> int:
+        return int((rejects["table"] == table).sum())
+
+    bronze_rule = {
+        "projects": "source sheet, every value preserved as text",
+        "builds": "source sheet, every value preserved as text",
+        "commits": "source sheet, every value preserved as text",
+        "incidents": "source sheet, every value preserved as text",
+    }
+    silver_rule = {
+        "projects": "dropped rows without a project id or name",
+        "builds": "dropped builds with no completion time, or ending before they started",
+        "commits": "dropped commits without an id, project or author date",
+        "incidents": "dropped incidents without an id, start or resolution time",
+    }
+
+    rows: list[dict[str, object]] = []
+    for table in ("projects", "builds", "commits", "incidents"):
+        source_rows = bronze_rows.get(table, 0)
+        rows.append({
+            "layer": "Bronze", "table_name": table,
+            "rows_in": source_rows, "rows_out": source_rows, "rows_dropped": 0,
+            "rule": bronze_rule[table],
+        })
+        rows.append({
+            "layer": "Silver", "table_name": table,
+            "rows_in": source_rows, "rows_out": silver_rows.get(table, 0),
+            "rows_dropped": dropped(table),
+            "rule": silver_rule[table],
+        })
+
+    links_in = silver_rows.get("commits", 0)
+    rows.append({
+        "layer": "Silver", "table_name": "commit_links",
+        "rows_in": links_in, "rows_out": len(fact_commit_link),
+        "rows_dropped": dropped("commit_links"),
+        "rule": "dropped links to a build that finished before the commit was authored",
+    })
+
+    # Aggregation is not deletion: those rows legitimately collapse to a coarser
+    # grain, so rows_dropped stays 0 and the rule says what the grain became.
+    gold_tables = [
+        ("dim_project", silver_rows.get("projects", 0), len(dim_project), 0,
+         "source projects plus unmapped members referenced by incidents"),
+        ("fact_deployment", silver_rows.get("builds", 0), len(fact_deployment), 0,
+         "one row per completed build, the deployment proxy"),
+        ("fact_commit_link", silver_rows.get("commit_links", 0), len(fact_commit_link), 0,
+         "commit x build associations that carry a lead time"),
+        ("fact_incident", silver_rows.get("incidents", 0), len(fact_incident), 0,
+         "one row per incident with restore hours"),
+        ("dora_service_month", len(fact_deployment), len(dora), 0,
+         f"aggregated {len(fact_deployment)} builds to {len(dora)} project-months"),
+        ("dora_period_summary", len(dora), len(summary), 0,
+         f"rolled {len(dora)} project-months into one period row"),
+    ]
+    for table, rows_in, rows_out, rows_dropped, rule in gold_tables:
+        rows.append({
+            "layer": "Gold", "table_name": table,
+            "rows_in": rows_in, "rows_out": rows_out, "rows_dropped": rows_dropped,
+            "rule": rule,
+        })
+
+    lineage = pd.DataFrame(rows)
+    for column in ("rows_in", "rows_out", "rows_dropped"):
+        lineage[column] = lineage[column].astype("Int64")
+    return lineage
+
+
 def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
     GOLD.mkdir(parents=True, exist_ok=True)
     projects, builds = tables["projects"], tables["builds"]
@@ -275,7 +373,13 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         .merge(dim_project, on="project_sk", how="left")
     )
 
-    fact_commit_link = inline_links.copy()
+    # A date column is required to filter the association fact by month. Without it
+    # the fact is reachable only through DimProject, so a month slicer cannot reach it
+    # and any monthly measure silently returns the period-wide value.
+    fact_commit_link = inline_links.assign(
+        deployed_date=inline_links["deployed_at"].dt.strftime("%Y-%m-%d"),
+        reporting_month=inline_links["deployed_at"].dt.strftime("%Y-%m"),
+    )
 
     fact_incident = (
         incidents.merge(dim_project[["project_sk", "project_name"]], on="project_name", how="left")
@@ -290,6 +394,9 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         ]
     )
     fact_incident["reporting_month"] = month_of(fact_incident["started_at"])
+    fact_incident["started_date"] = fact_incident["started_at"].dt.tz_localize(None).dt.strftime(
+        "%Y-%m-%d"
+    )
 
     deploy_month = fact_deployment.groupby(
         ["project_sk", "reporting_month"], as_index=False
@@ -351,6 +458,13 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         "deployments because no event-level deployment link exists. MTTR is blank where no "
         "deployment-caused incident was recorded."
     )
+    # Counts are integers, not measurements. Written as floats they would read "7.0"
+    # in the report and force the model to treat a sample size as a decimal.
+    for column in (
+        "days_in_month", "deployment_count", "failed_deployments",
+        "lead_time_sample_size", "mttr_sample_size",
+    ):
+        dora[column] = dora[column].astype("Int64")
     dora = dora[
         [
             "project_sk", "project_name", "reporting_month", "grain", "days_in_month",
@@ -395,6 +509,21 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         ]
     )
 
+    lineage = build_lineage(
+        bronze_rows={path.stem: len(pd.read_csv(path, dtype=str))
+                     for path in sorted(BRONZE.glob("*.csv"))},
+        silver_rows={path.stem: len(pd.read_csv(path))
+                     for path in sorted(SILVER.glob("*.csv"))
+                     if path.stem != "rejected_rows"},
+        rejects=pd.read_csv(SILVER / "rejected_rows.csv"),
+        dim_project=dim_project,
+        fact_deployment=fact_deployment,
+        fact_commit_link=fact_commit_link,
+        fact_incident=fact_incident,
+        dora=dora,
+        summary=summary,
+    )
+
     outputs = {
         "dim_project": dim_project,
         "fact_deployment": fact_deployment,
@@ -402,6 +531,7 @@ def gold(tables: dict[str, pd.DataFrame]) -> dict[str, pd.DataFrame]:
         "fact_incident": fact_incident,
         "dora_service_month": dora,
         "dora_period_summary": summary,
+        "pipeline_lineage": lineage,
     }
     for name, df in outputs.items():
         write(df, GOLD / f"{name}.csv")

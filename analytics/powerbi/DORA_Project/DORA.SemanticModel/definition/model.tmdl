@@ -10,7 +10,9 @@ ref table FactDeployment
 ref table FactCommitLink
 ref table FactIncident
 ref table DoraServiceMonth
+ref table PipelineLineage
+ref table DqCheckResult
 
 ref expression GoldFolder
 
-annotation PBI_QueryOrder = ["GoldFolder", "DimProject", "DimDate", "FactDeployment", "FactCommitLink", "FactIncident", "DoraServiceMonth"]
+annotation PBI_QueryOrder = ["GoldFolder", "DimProject", "DimDate", "FactDeployment", "FactCommitLink", "FactIncident", "DoraServiceMonth", "PipelineLineage", "DqCheckResult"]

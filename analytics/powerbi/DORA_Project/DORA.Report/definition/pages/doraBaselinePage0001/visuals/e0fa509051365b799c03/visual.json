@@ -88,7 +88,7 @@
               },
               "queryRef": "DoraServiceMonth.lead_time_sample_size",
               "nativeQueryRef": "lead_time_sample_size",
-              "displayName": "n"
+              "displayName": "Lead n"
             },
             {
               "field": {
@@ -128,6 +128,21 @@
                       "Entity": "DoraServiceMonth"
                     }
                   },
+                  "Property": "mttr_sample_size"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_sample_size",
+              "nativeQueryRef": "mttr_sample_size",
+              "displayName": "MTTR n"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
                   "Property": "data_quality_status"
                 }
               },
@@ -138,6 +153,34 @@
           ]
         }
       }
+    },
+    "objects": {
+      "values": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "columnHeaders": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "8D"
+                }
+              }
+            }
+          }
+        }
+      ]
     },
     "visualContainerObjects": {
       "title": [
@@ -153,7 +196,7 @@
             "text": {
               "expr": {
                 "Literal": {
-                  "Value": "'Published grain: project x month'"
+                  "Value": "'Published grain: project x month (page 2 has every column)'"
                 }
               }
             }

@@ -30,9 +30,19 @@ TYPE_OVERRIDES = {
     ("FactDeployment", "deployment_date"): "date",
     ("FactCommitLink", "author_date"): "dateTime",
     ("FactCommitLink", "deployed_at"): "dateTime",
+    ("FactCommitLink", "deployed_date"): "date",
     ("FactIncident", "started_at"): "dateTime",
     ("FactIncident", "resolved_at"): "dateTime",
+    ("FactIncident", "started_date"): "date",
     ("DoraServiceMonth", "month_start"): "date",
+    # Counts stay integers even though the CSV has blank cells for months where the
+    # metric was never observed - otherwise pandas infers float and the report reads
+    # "14.00" where the number of observations is 14.
+    ("DoraServiceMonth", "days_in_month"): "int64",
+    ("DoraServiceMonth", "deployment_count"): "int64",
+    ("DoraServiceMonth", "failed_deployments"): "int64",
+    ("DoraServiceMonth", "lead_time_sample_size"): "int64",
+    ("DoraServiceMonth", "mttr_sample_size"): "int64",
 }
 
 MEASURES = [
@@ -108,6 +118,10 @@ RELATIONSHIPS = [
     ("DoraServiceMonth", "project_sk", "DimProject", "project_sk"),
     ("DoraServiceMonth", "month_start", "DimDate", "Date"),
     ("FactDeployment", "deployment_date", "DimDate", "Date"),
+    # Without these two, a month filter reaches the metric table but never the facts,
+    # so a monthly lead-time or CFR visual returns the period-wide value in every month.
+    ("FactCommitLink", "deployed_date", "DimDate", "Date"),
+    ("FactIncident", "started_date", "DimDate", "Date"),
 ]
 
 TABLES_FROM_FILES = {
@@ -116,7 +130,22 @@ TABLES_FROM_FILES = {
     "FactCommitLink": "fact_commit_link.csv",
     "FactIncident": "fact_incident.csv",
     "DoraServiceMonth": "dora_service_month.csv",
+    "PipelineLineage": "pipeline_lineage.csv",
+    "DqCheckResult": "dq_check_results.csv",
 }
+
+# Measures that belong to the lineage and quality tables rather than to the metric
+# table, so the report can show the medallion and the gate status from data.
+AUX_MEASURES = [
+    ("DqCheckResult", "Checks Run", "COUNTROWS ( DqCheckResult )", "#,0"),
+    ("DqCheckResult", "Checks Passed", "SUM ( DqCheckResult[checks_passed] )", "#,0"),
+    (
+        "PipelineLineage",
+        "Rows Reaching Gold",
+        'CALCULATE ( SUM ( PipelineLineage[rows_out] ), PipelineLineage[layer] = "Gold" )',
+        "#,0",
+    ),
+]
 
 
 def lineage(*parts: str) -> str:
@@ -342,6 +371,19 @@ def main() -> None:
         encoding="utf-8",
     )
 
+    for table, label, expression, format_string in AUX_MEASURES:
+        path = TABLES / f"{table}.tmdl"
+        block = [
+            f"\tmeasure '{label}' = {expression}",
+            f"\t\tlineageTag: {lineage('measure', label)}",
+        ]
+        if format_string:
+            block.append(f"\t\tformatString: {format_string}")
+        path.write_text(
+            path.read_text(encoding="utf-8") + "\n" + "\n".join(block) + "\n",
+            encoding="utf-8",
+        )
+
     relationships = []
     for from_table, from_column, to_table, to_column in RELATIONSHIPS:
         relationships.append(f"relationship {lineage('rel', from_table, from_column, to_table)}")
@@ -365,7 +407,8 @@ def main() -> None:
     )
 
     order = ["GoldFolder", "DimProject", "DimDate", "FactDeployment",
-             "FactCommitLink", "FactIncident", "DoraServiceMonth"]
+             "FactCommitLink", "FactIncident", "DoraServiceMonth",
+             "PipelineLineage", "DqCheckResult"]
     model_lines = [
         "model Model",
         "\tculture: en-US",
@@ -429,6 +472,9 @@ def main() -> None:
         for table in written:
             if f"{table}[" in expression:
                 assert table in written
+    for table, label, _, _ in AUX_MEASURES:
+        assert table in written, f"aux measure references missing table {table}"
+        assert f"measure '{label}'" in written[table], f"{label} not written to {table}"
     print("  self-check: table refs, relationship columns and measure refs resolve")
 
 

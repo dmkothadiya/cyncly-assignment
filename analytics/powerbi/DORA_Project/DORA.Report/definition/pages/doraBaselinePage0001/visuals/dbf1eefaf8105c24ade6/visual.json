@@ -5,7 +5,7 @@
     "x": 30,
     "y": 62,
     "z": 2,
-    "width": 1500,
+    "width": 1860,
     "height": 34,
     "tabOrder": 2
   },
@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "2 projects  |  342 completed builds  |  deployment proxy, not a release event",
+                    "value": "2 projects  |  345 completed builds  |  2024-07 to 2024-12  |  deployment proxy, not a release event",
                     "textStyle": {
                       "fontSize": "10pt",
                       "color": "#C9D6E3",

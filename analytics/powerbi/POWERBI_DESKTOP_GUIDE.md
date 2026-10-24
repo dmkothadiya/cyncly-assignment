@@ -13,8 +13,8 @@ and the exact build steps for the report.
 | Power Query (M) | Provided, matches the generated column names exactly |
 | TMDL semantic model (`DORA.SemanticModel/`, `DORA_Project/DORA.SemanticModel/`) | Generated from the actual Gold columns; structural self-check passes |
 | DAX measures | 14 measures, all column references verified against the model |
-| Report (`DORA_Project/DORA.pbip`) | **Generated and verified**: 12 visuals, 17/17 definition files schema-valid, all field references resolve, renders in Power BI Desktop |
-| Dashboard captures | `analytics/dashboard/dora_powerbi_desktop.png` is a real Desktop screenshot; `dora_baseline_dashboard.png` is the earlier layout reference |
+| Report (`DORA_Project/DORA.pbip`) | **Generated and verified**: 19 visuals on 2 pages, 25/25 definition files schema-valid, all field references resolve, renders in Power BI Desktop |
+| Dashboard captures | `analytics/dashboard/dora_powerbi_desktop.png` and `dora_powerbi_lineage.png` are real Desktop screenshots; `dora_baseline_dashboard.png` is the earlier layout reference |
 
 ### Report format: PBIP, not `.pbix`
 
@@ -40,15 +40,22 @@ Do not present the layout-reference PNG as a Power BI screenshot. Use
 |---|---|---|
 | `DimProject` | 4 | includes `unmapped::` members for orphan incidents |
 | `DimDate` | generated | 2024-01-01 to 2025-12-31, mark as date table |
-| `FactDeployment` | 342 | one row per completed build |
-| `FactCommitLink` | 159 | commit x deployment associations (134 linkable) |
+| `FactDeployment` | 345 | one row per completed build |
+| `FactCommitLink` | 152 | commit x deployment associations (149 linkable) |
 | `FactIncident` | 11 | incidents with restore hours |
 | `DoraServiceMonth` | 9 | published metric grain, plus 14 measures |
+| `PipelineLineage` | 15 | Bronze/Silver/Gold row counts and the rule each layer applied |
+| `DqCheckResult` | 3 | DQ-01/02/03 status and evidence, published by the quality gate |
 
 Six relationships, all single-direction: `DimProject` to each fact and
 `DoraServiceMonth`, and `DimDate` to `DoraServiceMonth[month_start]` and
 `FactDeployment[deployment_date]`. `GoldFolder` is a text parameter pointing at
 `analytics/gold`.
+
+Two further relationships carry the date into the other facts -
+`FactCommitLink[deployed_date]` and `FactIncident[started_date]` to `DimDate[Date]` -
+so month slicers can reach lead time, CFR and MTTR. Without them a monthly visual
+returns the period-wide value in every month.
 
 Regenerate it after any pipeline change:
 

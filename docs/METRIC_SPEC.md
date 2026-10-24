@@ -17,8 +17,8 @@ baseline, not a scorecard.
 | Table | Grain | Rows in current data |
 |---|---|---|
 | `dora_service_month` | `project_sk` x `reporting_month` | 9 |
-| `fact_deployment` | one row per completed build run | 342 |
-| `fact_commit_link` | one row per commit-to-build association (`commit_id` x `deployment_id`) | 159 |
+| `fact_deployment` | one row per completed build run | 345 |
+| `fact_commit_link` | one row per commit-to-build association (`commit_id` x `deployment_id`) | 152 |
 | `fact_incident` | one row per work item | 11 |
 | `dim_project` | one row per project, plus unmapped incident projects | 4 |
 

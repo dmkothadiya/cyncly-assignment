@@ -75,6 +75,23 @@ table FactCommitLink
 
 		annotation SummarizationSetBy = Automatic
 
+	column deployed_date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: f0e9c446-a43f-5cdd-bf33-14be5eb6d473
+		summarizeBy: none
+		sourceColumn: deployed_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column reporting_month
+		dataType: string
+		lineageTag: 4e775450-7598-533d-8f6b-db23368cdf73
+		summarizeBy: none
+		sourceColumn: reporting_month
+
+		annotation SummarizationSetBy = Automatic
+
 	partition FactCommitLink = m
 		mode: import
 		source =
@@ -100,7 +117,9 @@ table FactCommitLink
 								{"lead_time_hours", type number},
 								{"is_linkable", type logical},
 								{"is_valid_lead_time", type logical},
-								{"grain", type text}
+								{"grain", type text},
+								{"deployed_date", type date},
+								{"reporting_month", type text}
 							}
 						),
 						WithTimestamps = Table.TransformColumns(

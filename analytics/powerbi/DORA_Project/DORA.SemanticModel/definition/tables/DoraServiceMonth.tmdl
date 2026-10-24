@@ -66,7 +66,7 @@ table DoraServiceMonth
 		annotation SummarizationSetBy = Automatic
 
 	column lead_time_sample_size
-		dataType: double
+		dataType: int64
 		lineageTag: 9c3f25c8-5d85-5ec9-95fa-c036e5eb68e0
 		summarizeBy: none
 		sourceColumn: lead_time_sample_size
@@ -106,7 +106,7 @@ table DoraServiceMonth
 		annotation SummarizationSetBy = Automatic
 
 	column mttr_sample_size
-		dataType: double
+		dataType: int64
 		lineageTag: 27ba5dca-1432-5df5-8539-2696557f8d3f
 		summarizeBy: none
 		sourceColumn: mttr_sample_size
@@ -181,12 +181,12 @@ table DoraServiceMonth
 								{"deployment_count", Int64.Type},
 								{"deployment_frequency_per_day", type number},
 								{"lead_time_median_hours", type number},
-								{"lead_time_sample_size", type number},
+								{"lead_time_sample_size", Int64.Type},
 								{"lead_time_available", type logical},
 								{"failed_deployments", Int64.Type},
 								{"change_failure_rate_pct", type number},
 								{"mttr_median_hours", type number},
-								{"mttr_sample_size", type number},
+								{"mttr_sample_size", Int64.Type},
 								{"mttr_available", type logical},
 								{"median_build_minutes", type number},
 								{"data_quality_status", type text},

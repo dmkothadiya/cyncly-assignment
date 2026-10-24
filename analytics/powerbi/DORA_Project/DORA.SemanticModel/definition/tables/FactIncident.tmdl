@@ -67,6 +67,15 @@ table FactIncident
 
 		annotation SummarizationSetBy = Automatic
 
+	column started_date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 012bce0a-fccb-5069-9add-47ad172fd4a9
+		summarizeBy: none
+		sourceColumn: started_date
+
+		annotation SummarizationSetBy = Automatic
+
 	partition FactIncident = m
 		mode: import
 		source =
@@ -91,7 +100,8 @@ table FactIncident
 								{"project_name", type text},
 								{"caused_by_deployment", Int64.Type},
 								{"restore_hours", type number},
-								{"reporting_month", type text}
+								{"reporting_month", type text},
+								{"started_date", type date}
 							}
 						),
 						WithTimestamps = Table.TransformColumns(

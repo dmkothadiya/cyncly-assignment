@@ -19,7 +19,7 @@
               {
                 "textRuns": [
                   {
-                    "value": "Built from the Gold layer. Data quality: 3/3 data-quality checks passed.",
+                    "value": "Built from the Gold layer  |  3/3 data-quality checks passed  |  149 lead-time observations, 3 MTTR observations",
                     "textStyle": {
                       "fontSize": "8pt",
                       "color": "#4A5568",

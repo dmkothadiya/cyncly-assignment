@@ -28,16 +28,21 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 ANALYTICS = ROOT / "analytics"
 GOLD = ANALYTICS / "gold"
+SILVER = ANALYTICS / "silver"
 QUALITY = ANALYTICS / "quality-checks"
 
-# Values below were confirmed against the raw workbook before the pipeline existed.
+# Values below were confirmed by recomputing from docs/Case Study - DORA Metrics Data.xlsx
+# directly, without going through the pipeline. The two September/November rows are
+# deliberate regression guards: those builds are the ones the pipeline used to drop.
 SPOT_CHECKS = [
     ("Project A", "2024-08", "deployment_count", 10),
     ("Project A", "2024-08", "change_failure_rate_pct", 30.0),
     ("Project A", "2024-08", "mttr_median_hours", 2.03),
+    ("Project B", "2024-09", "deployment_count", 141),
+    ("Project B", "2024-09", "lead_time_sample_size", 14),
+    ("Project B", "2024-11", "deployment_count", 73),
     ("Project B", "2024-12", "lead_time_median_hours", 18.29),
     ("Project B", "2024-12", "lead_time_sample_size", 77),
-    ("Project B", "2024-09", "deployment_count", 140),
 ]
 
 TOLERANCE = 0.05
@@ -133,7 +138,10 @@ def check_recomputation(report: Report) -> pd.DataFrame:
 
     valid = links[links["is_valid_lead_time"].astype(str).str.lower() == "true"].copy()
     valid["month"] = (
-        pd.to_datetime(valid["deployed_at"], utc=True).dt.tz_localize(None).dt.to_period("M").astype(str)
+        pd.to_datetime(valid["deployed_at"], utc=True, format="mixed")
+        .dt.tz_localize(None)
+        .dt.to_period("M")
+        .astype(str)
     )
     lead = valid.groupby(["project_sk", "month"]).agg(
         median_lead=("lead_time_hours", "median"), n=("lead_time_hours", "size")
@@ -174,6 +182,64 @@ def check_recomputation(report: Report) -> pd.DataFrame:
         f"{mttr_bad} grain rows disagree",
     )
     return dora
+
+
+def check_source_reconciliation(report: Report, dora: pd.DataFrame) -> None:
+    """Reconcile the facts against the source workbook, not against each other.
+
+    Every other check compares Gold to Silver or to itself, so a row lost during
+    ingestion is invisible to them. This reads the workbook directly and asserts
+    that nothing was dropped that should have been kept.
+    """
+    workbook = ROOT / "docs" / "Case Study - DORA Metrics Data.xlsx"
+    if not workbook.exists():
+        report.add(
+            "Source workbook reconciliation",
+            False,
+            f"{workbook.name} not found; the independent check cannot run",
+        )
+        return
+
+    parse = {"errors": "coerce", "utc": True, "format": "mixed"}
+    builds = pd.read_excel(workbook, "builds")
+    builds["start"] = pd.to_datetime(builds["pipeline_start_time"].astype(str), **parse)
+    builds["end"] = pd.to_datetime(builds["pipeline_end_time"].astype(str), **parse)
+    expected_builds = int(
+        (builds["end"].notna() & builds["start"].notna() & (builds["end"] >= builds["start"])).sum()
+    )
+    published = pd.read_csv(GOLD / "fact_deployment.csv")
+    report.add(
+        "Every valid source build reached Gold",
+        len(published) == expected_builds,
+        f"workbook has {expected_builds} build(s) with a usable window, Gold has {len(published)}",
+    )
+
+    commits = pd.read_excel(workbook, "commits")
+    report.add(
+        "Every source commit reached Silver",
+        len(commits) == len(pd.read_csv(SILVER / "commits.csv")),
+        f"workbook {len(commits)} commit row(s), silver "
+        f"{len(pd.read_csv(SILVER / 'commits.csv'))}",
+    )
+
+    # A timestamp that fails to parse must be a real defect in the source, never a
+    # parsing artefact. Mixed precisions are the usual cause, so assert there are none.
+    unparsed = int(
+        (builds["end"].isna() & builds["pipeline_end_time"].notna()).sum()
+        + (builds["start"].isna() & builds["pipeline_start_time"].notna()).sum()
+    )
+    report.add(
+        "No timestamp is dropped by the parser",
+        unparsed == 0,
+        f"{unparsed} non-empty timestamp(s) failed to parse",
+    )
+
+    summary = pd.read_csv(GOLD / "dora_period_summary.csv").iloc[0]
+    report.add(
+        "Period total matches the source",
+        int(summary["total_deployments"]) == expected_builds,
+        f"summary {int(summary['total_deployments'])} vs workbook {expected_builds}",
+    )
 
 
 def check_spot_values(report: Report, dora: pd.DataFrame) -> None:
@@ -257,10 +323,11 @@ def check_pbip(report: Report) -> None:
     )
 
     visuals = list(project.glob("DORA.Report/definition/pages/*/visuals/*/visual.json"))
+    pages = list(project.glob("DORA.Report/definition/pages/*/page.json"))
     report.add(
-        "Report page contains visuals",
-        len(visuals) >= 4,
-        f"{len(visuals)} visual definitions",
+        "Report has the baseline and the governance page",
+        len(pages) == 2 and len(visuals) >= 15,
+        f"{len(pages)} page(s), {len(visuals)} visual definitions",
     )
 
     sys.path.insert(0, str(ANALYTICS / "powerbi"))
@@ -285,10 +352,76 @@ def check_pbip(report: Report) -> None:
 
     frequency = (project / "DORA.SemanticModel" / "definition" / "tables"
                  / "DoraServiceMonth.tmdl").read_text(encoding="utf-8")
+    summary = pd.read_csv(GOLD / "dora_period_summary.csv").iloc[0]
     report.add(
         "Deployment Frequency matches the per project-month definition",
         "COUNTROWS ( DoraServiceMonth )" in frequency,
-        "measure divides deployments by grain rows (342 / 9 = 38.0)",
+        f"measure divides deployments by grain rows "
+        f"({int(summary['total_deployments'])} / 9 = "
+        f"{summary['deployment_frequency_per_month']})",
+    )
+
+    # Regression guard: with float types the report prints "14.00" observations.
+    sample_type_ok = all(
+        "dataType: int64" in block
+        for block in (
+            frequency.split("column lead_time_sample_size")[1][:120],
+            frequency.split("column mttr_sample_size")[1][:120],
+        )
+    )
+    report.add(
+        "Sample sizes are integers in the model",
+        sample_type_ok,
+        "lead and MTTR observation counts are int64, not decimals",
+    )
+
+    lineage_path = (project / "DORA.SemanticModel" / "definition" / "tables"
+                    / "PipelineLineage.tmdl")
+    dq_path = (project / "DORA.SemanticModel" / "definition" / "tables"
+               / "DqCheckResult.tmdl")
+    report.add(
+        "Bronze/Silver/Gold lineage and DQ results are in the model",
+        lineage_path.exists() and dq_path.exists(),
+        "PipelineLineage and DqCheckResult tables exist, so both are visible in the report",
+    )
+
+    # A fact that has no date column related to DimDate can be reached only through
+    # DimProject, so any monthly visual over it repeats the period-wide value.
+    relationships = (project / "DORA.SemanticModel" / "definition"
+                     / "relationships.tmdl").read_text(encoding="utf-8")
+    date_links = [
+        link for link in (
+            "fromColumn: FactCommitLink.deployed_date",
+            "fromColumn: FactIncident.started_date",
+            "fromColumn: FactDeployment.deployment_date",
+            "fromColumn: DoraServiceMonth.month_start",
+        ) if link in relationships
+    ]
+    report.add(
+        "Every fact is filterable by date",
+        len(date_links) == 4,
+        f"{len(date_links)}/4 facts relate a date column to DimDate",
+    )
+
+    # Find the column chart by type rather than by generated id.
+    axis_entity = ""
+    for path in visuals:
+        document = json.loads(path.read_text(encoding="utf-8"))
+        visual = document.get("visual", {})
+        if visual.get("visualType") != "columnChart":
+            continue
+        state = visual.get("query", {}).get("queryState", {})
+        projection = (state.get("Category") or {}).get("projections", [])
+        if projection:
+            axis_entity = (
+                projection[0].get("field", {}).get("Column", {})
+                .get("Expression", {}).get("SourceRef", {}).get("Entity", "")
+            )
+    report.add(
+        "Lead-time chart axis can filter its own fact",
+        axis_entity in {"FactCommitLink", "DimDate"},
+        f"axis entity is {axis_entity or 'unknown'}; DoraServiceMonth would repeat the "
+        "period median in every month",
     )
 
 
@@ -348,6 +481,7 @@ def main() -> int:
     report = Report()
     check_files(report)
     dora = check_recomputation(report)
+    check_source_reconciliation(report, dora)
     check_spot_values(report, dora)
     check_totals(report, dora)
     check_quality_results(report)

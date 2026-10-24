@@ -1,2 +1,2 @@
 period_start,period_end,projects,months,total_deployments,deployment_frequency_per_month,lead_time_median_hours,lead_time_sample_size,unique_commits,commit_link_coverage_pct,invalid_lead_links,change_failure_rate_pct,deployment_related_incidents,mttr_median_hours,mttr_sample_size,data_quality_status,notes
-2024-07,2024-12,2,6,342,38.0,18.24,134,108,84.28,0,0.88,3,2.03,3,partial,Period-wide rollup; deployment-proxy and incident-matching caveats apply.
+2024-07,2024-12,2,6,345,38.33,20.49,149,108,98.03,0,0.87,3,2.03,3,partial,Period-wide rollup; deployment-proxy and incident-matching caveats apply.

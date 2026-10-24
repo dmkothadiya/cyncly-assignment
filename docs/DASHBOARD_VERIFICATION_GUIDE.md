@@ -55,7 +55,7 @@ Expected output:
 
 ```
 Bronze: commits=164, builds=350, incidents=11, projects=2
-Silver: builds=342, commits=160, incidents=11
+Silver: builds=345, commits=164, incidents=11
 Gold:   grain rows=9, projects=2, months=6
 ```
 
@@ -64,7 +64,7 @@ Why the row counts differ at each layer — and they should:
 | Layer | Count | Reason |
 |---|---|---|
 | Bronze builds | 350 | raw sheet |
-| Silver builds | 342 | 8 have no completion timestamp or end before start |
+| Silver builds | 345 | 5 builds end before they start |
 | Bronze commits | 164 | raw sheet, includes re-reported snapshots |
 | Silver commits | 160 | duplicate (commit, build) pairs resolved by latest ingestion |
 | Gold grain | 9 | 2 projects x 6 months, minus months with no builds |
@@ -87,12 +87,12 @@ The period summary must read:
 
 | Field | Expected |
 |---|---|
-| `total_deployments` | 342 |
-| `deployment_frequency_per_month` | 38.0 |
-| `lead_time_median_hours` | 18.24 |
-| `lead_time_sample_size` | 134 |
-| `commit_link_coverage_pct` | 84.38 |
-| `change_failure_rate_pct` | 0.88 |
+| `total_deployments` | 345 |
+| `deployment_frequency_per_month` | 38.33 |
+| `lead_time_median_hours` | 20.49 |
+| `lead_time_sample_size` | 149 |
+| `commit_link_coverage_pct` | 98.03 |
+| `change_failure_rate_pct` | 0.87 |
 | `deployment_related_incidents` | 3 |
 | `mttr_median_hours` | 2.03 |
 | `mttr_sample_size` | 3 |
@@ -141,9 +141,9 @@ Check the reported counts, not just the status:
 |---|---|---|
 | DQ-01 | `projects` | 4 (2 real + 2 `unmapped::` for orphan incidents) |
 | DQ-01 | `duplicate_rows_by_key` | all zero |
-| DQ-02 | `commit_links_checked` | 134 |
+| DQ-02 | `commit_links_checked` | 149 |
 | DQ-02 | `commit_links_negative_lead_time` | 0 |
-| DQ-03 | `deployments_in_grain` / `_in_summary` | 342 / 342 |
+| DQ-03 | `deployments_in_grain` / `_in_summary` | 345 / 345 |
 
 ---
 
@@ -170,16 +170,28 @@ Get-ChildItem analytics/powerbi/DORA.SemanticModel/definition/tables
 Select-String -Path analytics/powerbi/DORA.SemanticModel/definition/relationships.tmdl -Pattern 'fromColumn|toColumn'
 ```
 
-Expect 6 table files and 6 relationships:
+Expect 8 table files and 8 relationships:
 
-| From | To |
-|---|---|
-| `FactDeployment.project_sk` | `DimProject.project_sk` |
-| `FactCommitLink.project_sk` | `DimProject.project_sk` |
-| `FactIncident.project_sk` | `DimProject.project_sk` |
-| `DoraServiceMonth.project_sk` | `DimProject.project_sk` |
-| `DoraServiceMonth.month_start` | `DimDate.Date` |
-| `FactDeployment.deployment_date` | `DimDate.Date` |
+| From | To | Why it matters |
+|---|---|---|
+| `FactDeployment.project_sk` | `DimProject.project_sk` | project filtering |
+| `FactCommitLink.project_sk` | `DimProject.project_sk` | project filtering |
+| `FactIncident.project_sk` | `DimProject.project_sk` | project filtering |
+| `DoraServiceMonth.project_sk` | `DimProject.project_sk` | project filtering |
+| `DoraServiceMonth.month_start` | `DimDate.Date` | month filtering of the metric table |
+| `FactDeployment.deployment_date` | `DimDate.Date` | month filtering of deployments |
+| `FactCommitLink.deployed_date` | `DimDate.Date` | **month filtering of lead time** |
+| `FactIncident.started_date` | `DimDate.Date` | **month filtering of CFR and MTTR** |
+
+The last two are easy to miss and their absence is invisible until you look at a
+monthly visual: with only the `DimProject` path, a month slicer reaches
+`DoraServiceMonth` but never reaches the facts, so every month shows the period-wide
+value. That is exactly the bug that made the lead-time chart repeat 20.49 h in all six
+months while the table showed the correct per-month numbers.
+
+> **Verify:** six of the eight relationships must point at `DimDate.Date` or
+> `DimProject.project_sk`; every fact table must appear at least once with a date
+> column.
 
 Then confirm the types did not silently change:
 
@@ -202,8 +214,8 @@ rebuild the page by hand.
 
 `analytics/powerbi/DORA_Project/DORA.pbip` is a text-based Power BI project (PBIR
 report + TMDL semantic model). Double-click it, or **File → Open** in Power BI
-Desktop. Everything the page needs is already authored: 12 visuals, 6 tables,
-6 relationships, 14 measures.
+Desktop. Everything both pages need is already authored: 19 visuals, 8 tables,
+8 relationships, 17 measures.
 
 1. Open `analytics/powerbi/DORA_Project/DORA.pbip`.
 2. Wait for the **Load** dialog. Each table shows *Evaluating...* while the CSV files
@@ -211,23 +223,29 @@ Desktop. Everything the page needs is already authored: 12 visuals, 6 tables,
 3. If the yellow banner **"Some of the tables have incomplete or no data"** is still
    visible, click **Refresh now** in the banner. That banner appears before the first
    data load completes and is not an error.
-4. The four cards must read **38.0 / 18.2 h / 0.88% / 2.0 h**.
-5. **File → Save as → Power BI file (\*.pbix)** to produce the single-file dashboard,
+4. The four cards must read **38.33 / 20.5 h / 0.87% / 2.0 h**.
+5. Check the lead-time chart: it must show **four** bars (2024-09 to 2024-12), not six
+   identical ones. Six equal bars means a monthly visual lost its filter path.
+6. Open the second page, **Grain, lineage & quality**: the Bronze/Silver/Gold table,
+   the three DQ results and all 16 published columns are there.
+7. **File → Save as → Power BI file (\*.pbix)** to produce the single-file dashboard,
    then verify it with the command in Step 8.
 
-The rendered page is captured in
+The rendered pages are captured in
 [`analytics/dashboard/dora_powerbi_desktop.png`](../analytics/dashboard/dora_powerbi_desktop.png)
-- that image is a real screenshot of Power BI Desktop showing this project, not a
-mock-up.
+and [`dora_powerbi_lineage.png`](../analytics/dashboard/dora_powerbi_lineage.png) -
+those images are real screenshots of Power BI Desktop showing this project, not
+mock-ups.
 
 What is already proven for this route (see `docs/VALIDATION_EVIDENCE.md`):
 
 | Check | Result |
 |---|---|
-| PBIR/TMDL definition files validate against the Microsoft schemas | 17/17 |
+| PBIR/TMDL definition files validate against the Microsoft schemas | 25/25 |
 | Every visual field reference resolves to a model column or measure | all resolve |
-| Report renders in Power BI Desktop without a visual error | yes |
-| Cards match the Gold numbers | 38.0 / 18.2 h / 0.88% / 2.0 h |
+| Report renders in Power BI Desktop without a visual error | yes, both pages |
+| Cards match the Gold numbers | 38.33 / 20.5 h / 0.87% / 2.0 h |
+| Monthly lead-time bars match the grain table | 25.98 / 0.57 / 22.18 / 18.29 |
 
 To regenerate the project after a pipeline change:
 
@@ -240,7 +258,7 @@ python analytics/powerbi/validate_pbip.py     # schemas + field references
 ### Route A - rebuild from one workbook (~10 minutes)
 
 Pre-built for you: `analytics/powerbi/DORA_Data.xlsx` -
-`DimProject` 4 rows, `FactDeployment` 342, `FactCommitLink` 159, `FactIncident` 11,
+`DimProject` 4 rows, `FactDeployment` 345, `FactCommitLink` 152, `FactIncident` 11,
 `DoraServiceMonth` 9. It also carries the two date columns the model needs
 (`month_start`, `deployment_date`), so no Power Query editing is required.
 
@@ -265,7 +283,7 @@ through **Get data**, never opened directly with Power BI.
    icon. Then **Close & Apply**.
 
 > **Verify:** the Data pane on the right lists five tables. Row counts match
-> 4 / 342 / 159 / 11 / 9. If `deployment_id` shows a sigma symbol, its type is
+> 4 / 345 / 152 / 11 / 9. If `deployment_id` shows a sigma symbol, its type is
 > numeric - select the column, **Transform → Data Type → Text**.
 
 **7.2 Create the date table**
@@ -325,8 +343,8 @@ For each row below: right-click `DoraServiceMonth` in the Data pane →
 Set formats: `Deployments` whole number, frequency `0.0`, lead time `0.0 "h"`,
 change failure rate `0.00%`, MTTR `0.0 "h"`.
 
-> **Verify immediately:** drop `Deployments` on a blank canvas. It must read **342**.
-> `Deployment Frequency (per project-month)` must read **38.0**. If Deployments shows
+> **Verify immediately:** drop `Deployments` on a blank canvas. It must read **345**.
+> `Deployment Frequency (per project-month)` must read **38.33**. If Deployments shows
 > something else, the table or the column is wrong - stop and fix it here rather than
 > debugging a visual later.
 
@@ -379,13 +397,13 @@ Positions are for a 1280 x 720 canvas; use the Format pane's X / Y / Width / Hei
 
 **1-3. Header.** Rectangle: fill `#16324F`, no border, no shadow. Title text box:
 white, bold, 20 pt, text `DORA baseline  |  July - December 2024`. Subtitle: `#C9D6E3`,
-10 pt, text `2 projects  |  342 completed builds  |  deployment proxy, not a release event`.
+10 pt, text `2 projects  |  345 completed builds  |  2024-07 to 2024-12  |  deployment proxy, not a release event`.
 
-> **Verify:** the subtitle's 342 is hard text here. If your `Deployments` card does not
-> also read 342, fix the measure before continuing (Step 7.4).
+> **Verify:** in the generated project the subtitle is computed from Gold, so it cannot
+> disagree with the cards. If you are rebuilding by hand, type 345.
 
 **4. KPI cards.** Use the **Card (new)** visual, because it supports a reference label
-under the value, which is how the image shows "median | n=134".
+under the value, which is how the image shows "median | n=149".
 
 - Value: the measure (`Deployment Frequency (per project-month)`, `Lead Time for Changes
   (median h)`, `Change Failure Rate %`, `MTTR (median h)`).
@@ -402,7 +420,7 @@ under the value, which is how the image shows "median | n=134".
 If your Desktop build lacks Reference labels, use the classic **Card** plus a small
 text box underneath with the sample-size measure.
 
-> **Verify:** 38.0 · 18.2 h · 0.88 % · 2.0 h.
+> **Verify:** 38.33 · 20.5 h · 0.87 % · 2.0 h.
 
 **5. Line chart.** Title off (the header text box carries it) - or set the visual title
 to `Deployment volume by project and month`.
@@ -451,7 +469,7 @@ Format: data colour `#1F6F78`, data labels on (0.0), X axis 8.5 pt, gridlines li
 Format: header background `#16324F`, header text white 9.5 pt; values 9.5 pt; grid rows
 off, banded rows on with `#F2F5F8`.
 
-> **Verify:** nine rows, and the Builds column sums to **342**.
+> **Verify:** nine rows, and the Builds column sums to **345**.
 
 **8. Caveat panel.** Text box with fill `#F2F5F8`, no border, plus a 4 px rectangle on
 the left in `#8A5A00`. Contents:
@@ -486,17 +504,17 @@ The report is wrong until every line matches:
 
 | Visual | Field | Must read | If it does not |
 |---|---|---|---|
-| Card | Deployment Frequency (per project-month) | **38.0** | `deployment_count` summed twice, or grain duplicated |
-| Card | Lead Time for Changes (median h) | **18.2 h** | `is_valid_lead_time` filter missing |
-| Card | Change Failure Rate % | **0.88%** | failed incidents joined to the wrong table |
+| Card | Deployment Frequency (per project-month) | **38.33** | `deployment_count` summed twice, or grain duplicated |
+| Card | Lead Time for Changes (median h) | **20.5 h** | `is_valid_lead_time` filter missing |
+| Card | Change Failure Rate % | **0.87%** | failed incidents joined to the wrong table |
 | Card | MTTR (median h) | **2.0 h** | incidents not filtered to `caused_by_deployment = 1` |
 | Line chart | points per month | 6 months, 2 series | month axis is text, not a date |
 | Column chart | bars | 6 bars, one per month (2024-07 to 2024-12) | month axis came through as text, or the valid-flag filter dropped rows |
-| Grain table | rows | 9 rows, Builds column totals **342** | grain duplicated, or a rate column summed |
-| Header / footer text | static numbers | 342 and "3/3 data-quality checks passed" | text not updated after a data refresh |
-| *(optional)* Matrix | project x month | 9 populated cells, total **342** | relationship missing or many-to-many |
+| Grain table | rows | 9 rows, Builds column totals **345** | grain duplicated, or a rate column summed |
+| Header / footer text | derived from Gold | 345 and "3/3 data-quality checks passed" | the project computes these, so a stale value means Gold is stale |
+| *(optional)* Matrix | project x month | 9 populated cells, total **345** | relationship missing or many-to-many |
 | *(optional)* Slicer | Project A only | 13 deployments, CFR 23.1%, MTTR 2.0 h | cross-filter direction is not Single |
-| *(optional)* Slicer | year 2024 only | 342 deployments (all data is 2024) | date table not related |
+| *(optional)* Slicer | year 2024 only | 345 deployments (all data is 2024) | date table not related |
 
 The reference image has no slicers - add them only if you want to demonstrate filter
 propagation during a review; they are the fastest way to prove the relationships work.
@@ -505,8 +523,8 @@ Two manual checks worth doing once:
 
 - **Blank, not zero.** Filter the matrix to Project B, 2024-09. MTTR must be blank,
   never 0. A zero means something is filling gaps.
-- **Context propagates.** With no slicer, `Deployments` = 342; select Project A and it
-  must fall to 13 (2 + 10 + 1). If it stays 342, the relationships are missing.
+- **Context propagates.** With no slicer, `Deployments` = 345; select Project A and it
+  must fall to 13 (2 + 10 + 1). If it stays 345, the relationships are missing.
 
 ---
 
