@@ -1,0 +1,11 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/gitIntegration/platformProperties/2.0.0/schema.json",
+  "metadata": {
+    "type": "SemanticModel",
+    "displayName": "DORA"
+  },
+  "config": {
+    "version": "2.0",
+    "logicalId": "4d7aba59-9b07-5d31-a0cc-363219d22359"
+  }
+}

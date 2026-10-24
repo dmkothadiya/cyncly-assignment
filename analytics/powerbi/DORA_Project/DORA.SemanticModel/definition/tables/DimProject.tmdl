@@ -1,0 +1,55 @@
+table DimProject
+	lineageTag: 90e72346-76e2-5b3c-b9d4-8de3ee2331a9
+
+	column project_sk
+		dataType: string
+		lineageTag: e97ec073-134d-5442-8ba9-4b32fc0297da
+		summarizeBy: none
+		sourceColumn: project_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column project_name
+		dataType: string
+		lineageTag: fa61007f-8f90-57db-9ede-f96c86883ce5
+		summarizeBy: none
+		sourceColumn: project_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_mapped
+		dataType: boolean
+		lineageTag: 422c073a-a5c2-56c9-84cb-95e2442e9919
+		summarizeBy: none
+		sourceColumn: is_mapped
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DimProject = m
+		mode: import
+		source =
+					let
+						Source = Csv.Document(
+							File.Contents(GoldFolder & "\dim_project.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+						),
+						Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+						Cleaned = Table.ReplaceValue(
+							Promoted,
+							"",
+							null,
+							Replacer.ReplaceValue,
+							Table.ColumnNames(Promoted)
+						),
+						Typed = Table.TransformColumnTypes(
+							Cleaned,
+							{
+								{"project_sk", type text},
+								{"project_name", type text},
+								{"is_mapped", type logical}
+							}
+						)
+					in
+						Typed
+
+	annotation PBI_ResultType = Table

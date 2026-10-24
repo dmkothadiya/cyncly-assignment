@@ -1,0 +1,89 @@
+table DqCheckResult
+	lineageTag: a1b3ad9f-c736-571c-a0e1-8c56d8180097
+
+	column check_id
+		dataType: string
+		lineageTag: 58cd9cd2-04bd-5334-b5fc-6c14aa822939
+		summarizeBy: none
+		sourceColumn: check_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column name
+		dataType: string
+		lineageTag: 33a82c4d-2e9b-5b7e-92f9-306f2d44e1c6
+		summarizeBy: none
+		sourceColumn: name
+
+		annotation SummarizationSetBy = Automatic
+
+	column question
+		dataType: string
+		lineageTag: 55678a4b-e0b9-5d15-82d9-bae342f8c005
+		summarizeBy: none
+		sourceColumn: question
+
+		annotation SummarizationSetBy = Automatic
+
+	column status
+		dataType: string
+		lineageTag: 2ae5ad46-5d03-5e59-954e-b90df3bdbc6d
+		summarizeBy: none
+		sourceColumn: status
+
+		annotation SummarizationSetBy = Automatic
+
+	column checks_passed
+		dataType: int64
+		lineageTag: a713e93b-55fc-5ecc-9ec1-a6adbe6ce1a3
+		summarizeBy: none
+		sourceColumn: checks_passed
+
+		annotation SummarizationSetBy = Automatic
+
+	column detail
+		dataType: string
+		lineageTag: 89f322f7-f8fe-5cd6-a6f5-4fc4af3ac0b0
+		summarizeBy: none
+		sourceColumn: detail
+
+		annotation SummarizationSetBy = Automatic
+
+	partition DqCheckResult = m
+		mode: import
+		source =
+					let
+						Source = Csv.Document(
+							File.Contents(GoldFolder & "\dq_check_results.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+						),
+						Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+						Cleaned = Table.ReplaceValue(
+							Promoted,
+							"",
+							null,
+							Replacer.ReplaceValue,
+							Table.ColumnNames(Promoted)
+						),
+						Typed = Table.TransformColumnTypes(
+							Cleaned,
+							{
+								{"check_id", type text},
+								{"name", type text},
+								{"question", type text},
+								{"status", type text},
+								{"checks_passed", Int64.Type},
+								{"detail", type text}
+							}
+						)
+					in
+						Typed
+
+	annotation PBI_ResultType = Table
+	measure 'Checks Run' = COUNTROWS ( DqCheckResult )
+		lineageTag: ec8e8226-d149-5303-bec1-df0c6c9e303e
+		formatString: #,0
+
+	measure 'Checks Passed' = SUM ( DqCheckResult[checks_passed] )
+		lineageTag: 61ee67bd-29a7-543e-aacc-e131e8395116
+		formatString: #,0

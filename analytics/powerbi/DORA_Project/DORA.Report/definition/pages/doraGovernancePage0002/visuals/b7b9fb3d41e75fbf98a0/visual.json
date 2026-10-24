@@ -1,0 +1,152 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "b7b9fb3d41e75fbf98a0",
+  "position": {
+    "x": 30,
+    "y": 123,
+    "z": 10,
+    "width": 1120,
+    "height": 400,
+    "tabOrder": 10
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "PipelineLineage"
+                    }
+                  },
+                  "Property": "layer"
+                }
+              },
+              "queryRef": "PipelineLineage.layer",
+              "nativeQueryRef": "layer",
+              "displayName": "Layer"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "PipelineLineage"
+                    }
+                  },
+                  "Property": "table_name"
+                }
+              },
+              "queryRef": "PipelineLineage.table_name",
+              "nativeQueryRef": "table_name",
+              "displayName": "Table"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "PipelineLineage"
+                    }
+                  },
+                  "Property": "rows_in"
+                }
+              },
+              "queryRef": "PipelineLineage.rows_in",
+              "nativeQueryRef": "rows_in",
+              "displayName": "In"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "PipelineLineage"
+                    }
+                  },
+                  "Property": "rows_out"
+                }
+              },
+              "queryRef": "PipelineLineage.rows_out",
+              "nativeQueryRef": "rows_out",
+              "displayName": "Out"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "PipelineLineage"
+                    }
+                  },
+                  "Property": "rows_dropped"
+                }
+              },
+              "queryRef": "PipelineLineage.rows_dropped",
+              "nativeQueryRef": "rows_dropped",
+              "displayName": "Dropped"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "PipelineLineage"
+                    }
+                  },
+                  "Property": "rule"
+                }
+              },
+              "queryRef": "PipelineLineage.rule",
+              "nativeQueryRef": "rule",
+              "displayName": "Rule applied"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "PipelineLineage"
+                  }
+                },
+                "Property": "layer"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Bronze -> Silver -> Gold: what each layer kept and what it removed'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

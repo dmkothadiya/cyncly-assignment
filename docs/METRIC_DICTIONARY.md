@@ -1,84 +1,45 @@
 # Metric Dictionary
 
+> **Superseded for the DORA report by [`METRIC_SPEC.md`](./METRIC_SPEC.md).**
+> The spec is authoritative for grain, formulas and limitations. This page keeps
+> the short reference and the correction history.
+
 ## Source data used
 
-The workbook contains four worksheets:
+The workbook contains four worksheets: `commits`, `builds`, `incidents`, `projects`.
 
-- `commits`
-- `builds`
-- `incidents`
-- `projects`
+## Measures in the current implementation
 
-## Measures and proxies in this implementation
+| Metric | Formula | Source |
+|---|---|---|
+| Deployment frequency | count of distinct `build_id` per project per month; per-day form divides by days in month | `builds.build_id`, `builds.pipeline_end_time`, `builds.project_sk` |
+| Lead time for changes | median of `pipeline_end_time - commits.author_date` in hours, for valid commit-to-build links | `commits.build_sk` joined to `builds.build_id` |
+| Change failure rate | incidents flagged `caused_by_deployment` / deployment count, same project-month | `incidents.caused_by_deployment` |
+| Mean time to restore | median of `incident_resolved_datetime - incident_started_datetime`, deployment-caused incidents only | `incidents.*` timestamps |
 
-### Deployment frequency
+## Correction to the earlier statement about lead time
 
-Available proxy: count of distinct build IDs per project within a reporting month.
+An earlier version of this document said the workbook had no usable
+commit-to-deployment relation. **That was wrong.** `commits.build_sk` matches
+`builds.build_id`: 149 of 152 commit links resolve to a completed build, giving 98%
+link coverage and a usable lead-time signal.
 
-Source fields:
-
-- `builds.build_id`
-- `builds.pipeline_end_time`
-- `builds.project_sk`
-
-Calculation:
-
-- Bucket each build record by project and month using its end timestamp.
-- Count distinct build IDs within the month.
-
-Quality note:
-
-- The workbook does not identify production deployment events or deployment environments. Do not present this value as verified production deployment frequency without validating the build record semantics with source owners.
-
-### Change failure rate
-
-Available proxy: deployment-related incidents divided by pipeline build count in the same project/month.
-
-Source fields:
-
-- `incidents.caused_by_deployment`
-- `incidents.incident_started_datetime`
-- `builds.project_sk`
-
-Calculation:
-
-- Count incidents marked `caused_by_deployment`.
-- Divide by build count for the same project and month.
-
-Quality note:
-
-- The workbook has no event-level incident-to-deployment link. This is a limited approximation, not a validated DORA change failure rate.
-
-### Mean time to restore
-
-Measure: average elapsed hours from incident start to incident resolution.
-
-Source fields:
-
-- `incidents.incident_started_datetime`
-- `incidents.incident_resolved_datetime`
-
-Calculation:
-
-- Subtract start from resolution for valid rows.
-- Aggregate by project and month.
-
-## Metrics intentionally not computed or qualified
-
-### Lead time for changes
-
-Rationale: the workbook does not contain a reliable, explicit relation between commit records and deployment records. The `build_sk` fields do not provide a direct, valid join key to the build records as provided in the sample workbook.
-
-Result: this metric is represented as unavailable rather than inferred from weak assumptions.
-
-### Production deployment frequency
-
-The `builds` sheet contains pipeline start/end timestamps but no environment or deployment event indicator. The pipeline's build count is therefore only a proxy until the source event grain is confirmed.
+The real limitation is different and is recorded in the spec: a completed build is
+a proxy for a deployment, the link is at commit-to-build association grain, and one
+association was chronologically impossible and was rejected.
 
 ## Data quality status
 
-Each Gold row includes a quality flag:
+Each Gold row carries `data_quality_status`:
 
-- `validated`: the row has complete relevant fields and no material issues
-- `limited`: the row is derived but constrained by missing metadata or survey-like assumptions
-- `unavailable`: metric not supported by the supplied source model
+- `validated` - metrics available with a usable sample (lead time n >= 5)
+- `partial` - some metrics available; at least one is blank or thin
+- `unavailable` - no metric available for that project-month
+
+Blank metric values mean **not observed**. They are never zero-filled.
+
+## Related
+
+- [`METRIC_SPEC.md`](./METRIC_SPEC.md) - authoritative definition, grain, ownership
+- [`DATA_QUALITY.md`](./DATA_QUALITY.md) - quality rules and executable checks
+- [`../analytics/powerbi/POWERBI_DESKTOP_GUIDE.md`](../analytics/powerbi/POWERBI_DESKTOP_GUIDE.md) - report build

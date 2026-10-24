@@ -1,0 +1,96 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "4cdaf3f6a25b56f088e5",
+  "position": {
+    "x": 1104,
+    "y": 288,
+    "z": 21,
+    "width": 786,
+    "height": 288,
+    "tabOrder": 21
+  },
+  "visual": {
+    "visualType": "columnChart",
+    "query": {
+      "queryState": {
+        "Category": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "FactCommitLink"
+                    }
+                  },
+                  "Property": "reporting_month"
+                }
+              },
+              "queryRef": "FactCommitLink.reporting_month",
+              "nativeQueryRef": "reporting_month"
+            }
+          ]
+        },
+        "Y": {
+          "projections": [
+            {
+              "field": {
+                "Measure": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "Lead Time for Changes (median h)"
+                }
+              },
+              "queryRef": "DoraServiceMonth.Lead Time for Changes (median h)",
+              "nativeQueryRef": "Lead Time for Changes (median h)"
+            }
+          ]
+        }
+      }
+    },
+    "objects": {
+      "dataPoint": [
+        {
+          "properties": {
+            "fill": {
+              "solid": {
+                "color": {
+                  "expr": {
+                    "Literal": {
+                      "Value": "'#1F6F78'"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'Lead time, median hours (where observed)'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

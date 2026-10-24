@@ -1,0 +1,19 @@
+{
+  "name": "DORA Navy",
+  "dataColors": [
+    "#1F6F78",
+    "#7A5CA0",
+    "#8A5A00",
+    "#1E6B4E",
+    "#8C2F2F",
+    "#4A5568",
+    "#2F855A",
+    "#B7791F"
+  ],
+  "background": "#FFFFFF",
+  "foreground": "#16324F",
+  "tableAccent": "#16324F",
+  "good": "#1E6B4E",
+  "neutral": "#8A5A00",
+  "bad": "#8C2F2F"
+}

@@ -1,0 +1,31 @@
+relationship d9e8a746-4656-5e8b-8778-81be1080b4aa
+	fromColumn: FactDeployment.project_sk
+	toColumn: DimProject.project_sk
+
+relationship 518113e2-41ed-50b3-8231-8892bfc2fe43
+	fromColumn: FactCommitLink.project_sk
+	toColumn: DimProject.project_sk
+
+relationship 5d73cfaa-fb96-50e0-b0ff-4b8e38ee3040
+	fromColumn: FactIncident.project_sk
+	toColumn: DimProject.project_sk
+
+relationship ea96b4ff-9ec7-5e7e-872d-94b118674f59
+	fromColumn: DoraServiceMonth.project_sk
+	toColumn: DimProject.project_sk
+
+relationship e7fc207f-8f75-54d6-ba36-eb1213e19a69
+	fromColumn: DoraServiceMonth.month_start
+	toColumn: DimDate.Date
+
+relationship 722134d4-acbf-542f-ad22-12b6221399db
+	fromColumn: FactDeployment.deployment_date
+	toColumn: DimDate.Date
+
+relationship 97c8dca1-a10d-5c6e-b1f0-f9b19d5533af
+	fromColumn: FactCommitLink.deployed_date
+	toColumn: DimDate.Date
+
+relationship f4c65207-a63b-5603-b79c-e9f1075f81a6
+	fromColumn: FactIncident.started_date
+	toColumn: DimDate.Date

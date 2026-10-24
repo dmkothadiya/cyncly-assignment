@@ -1,0 +1,135 @@
+table FactDeployment
+	lineageTag: f1717127-074a-5b91-ba5f-1b7d7413bdda
+
+	column deployment_id
+		dataType: string
+		lineageTag: f6e493eb-8cb2-538d-93a8-0098150c1313
+		summarizeBy: none
+		sourceColumn: deployment_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column project_sk
+		dataType: string
+		lineageTag: 76b74c16-2d14-57bc-b8e3-dd4c8973a952
+		summarizeBy: none
+		sourceColumn: project_sk
+
+		annotation SummarizationSetBy = Automatic
+
+	column component_name
+		dataType: string
+		lineageTag: fc6645a6-2ed9-50a2-983c-259b13e5c0da
+		summarizeBy: none
+		sourceColumn: component_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column pipeline_id
+		dataType: string
+		lineageTag: ac9dd5b4-1c8b-5e1a-9003-0252dbc72bac
+		summarizeBy: none
+		sourceColumn: pipeline_id
+
+		annotation SummarizationSetBy = Automatic
+
+	column pipeline_start_time
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn:ss
+		lineageTag: e7f7e0c0-f7d1-5a9b-9cb1-06db8d37c921
+		summarizeBy: none
+		sourceColumn: pipeline_start_time
+
+		annotation SummarizationSetBy = Automatic
+
+	column pipeline_end_time
+		dataType: dateTime
+		formatString: yyyy-mm-dd hh:nn:ss
+		lineageTag: d138e5de-d702-53b7-9ded-6a52842ca6aa
+		summarizeBy: none
+		sourceColumn: pipeline_end_time
+
+		annotation SummarizationSetBy = Automatic
+
+	column duration_minutes
+		dataType: double
+		lineageTag: c5e69c7d-468c-55ff-9d32-d92eefe22b2e
+		summarizeBy: none
+		sourceColumn: duration_minutes
+
+		annotation SummarizationSetBy = Automatic
+
+	column deployment_date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 4cc42efe-206e-57d0-bd92-269a6afa6b89
+		summarizeBy: none
+		sourceColumn: deployment_date
+
+		annotation SummarizationSetBy = Automatic
+
+	column reporting_month
+		dataType: string
+		lineageTag: 62baad1c-a7f0-5bb6-9903-0113ff6e589c
+		summarizeBy: none
+		sourceColumn: reporting_month
+
+		annotation SummarizationSetBy = Automatic
+
+	column project_name
+		dataType: string
+		lineageTag: 52594d92-0b06-58cf-ae88-a5afa3b9893c
+		summarizeBy: none
+		sourceColumn: project_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column is_mapped
+		dataType: boolean
+		lineageTag: a99b7745-b096-5145-9a16-4698034a7509
+		summarizeBy: none
+		sourceColumn: is_mapped
+
+		annotation SummarizationSetBy = Automatic
+
+	partition FactDeployment = m
+		mode: import
+		source =
+					let
+						Source = Csv.Document(
+							File.Contents(GoldFolder & "\fact_deployment.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+						),
+						Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+						Cleaned = Table.ReplaceValue(
+							Promoted,
+							"",
+							null,
+							Replacer.ReplaceValue,
+							Table.ColumnNames(Promoted)
+						),
+						Typed = Table.TransformColumnTypes(
+							Cleaned,
+							{
+								{"deployment_id", type text},
+								{"project_sk", type text},
+								{"component_name", type text},
+								{"pipeline_id", type text},
+								{"duration_minutes", type number},
+								{"deployment_date", type date},
+								{"reporting_month", type text},
+								{"project_name", type text},
+								{"is_mapped", type logical}
+							}
+						),
+						WithTimestamps = Table.TransformColumns(
+							Typed,
+							{
+								{"pipeline_start_time", each if _ = null then null else DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime},
+								{"pipeline_end_time", each if _ = null then null else DateTimeZone.RemoveZone(DateTimeZone.FromText(_)), type datetime}
+							}
+						)
+					in
+						WithTimestamps
+
+	annotation PBI_ResultType = Table

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "24596c066df85b45820e",
+  "position": {
+    "x": 30,
+    "y": 909,
+    "z": 24,
+    "width": 1860,
+    "height": 40,
+    "tabOrder": 24
+  },
+  "visual": {
+    "visualType": "textbox",
+    "objects": {
+      "general": [
+        {
+          "properties": {
+            "paragraphs": [
+              {
+                "textRuns": [
+                  {
+                    "value": "Built from the Gold layer  |  3/3 data-quality checks passed  |  149 lead-time observations, 3 MTTR observations",
+                    "textStyle": {
+                      "fontSize": "8pt",
+                      "color": "#4A5568",
+                      "fontFamily": "Segoe UI"
+                    }
+                  }
+                ],
+                "horizontalTextAlignment": "left"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

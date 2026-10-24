@@ -1,0 +1,85 @@
+table PipelineLineage
+	lineageTag: 0c4249e3-579e-5b9b-afc2-c177ee06964d
+
+	column layer
+		dataType: string
+		lineageTag: 2c90e852-eb82-5018-81d6-218a2ce732a5
+		summarizeBy: none
+		sourceColumn: layer
+
+		annotation SummarizationSetBy = Automatic
+
+	column table_name
+		dataType: string
+		lineageTag: e574a786-d34e-5774-97a7-ed7e4b185eb2
+		summarizeBy: none
+		sourceColumn: table_name
+
+		annotation SummarizationSetBy = Automatic
+
+	column rows_in
+		dataType: int64
+		lineageTag: f5b03e37-15fb-5612-aa73-e594262fa6d4
+		summarizeBy: none
+		sourceColumn: rows_in
+
+		annotation SummarizationSetBy = Automatic
+
+	column rows_out
+		dataType: int64
+		lineageTag: 740885b5-3ec7-50b1-b43f-cefc654635e3
+		summarizeBy: none
+		sourceColumn: rows_out
+
+		annotation SummarizationSetBy = Automatic
+
+	column rows_dropped
+		dataType: int64
+		lineageTag: 919f5caf-e8bf-56a0-aac6-41720d2ef715
+		summarizeBy: none
+		sourceColumn: rows_dropped
+
+		annotation SummarizationSetBy = Automatic
+
+	column rule
+		dataType: string
+		lineageTag: 236d9cf6-2592-56bb-a36f-d6d32487f9b8
+		summarizeBy: none
+		sourceColumn: rule
+
+		annotation SummarizationSetBy = Automatic
+
+	partition PipelineLineage = m
+		mode: import
+		source =
+					let
+						Source = Csv.Document(
+							File.Contents(GoldFolder & "\pipeline_lineage.csv"),
+							[Delimiter = ",", Encoding = 65001, QuoteStyle = QuoteStyle.Csv]
+						),
+						Promoted = Table.PromoteHeaders(Source, [PromoteAllScalars = true]),
+						Cleaned = Table.ReplaceValue(
+							Promoted,
+							"",
+							null,
+							Replacer.ReplaceValue,
+							Table.ColumnNames(Promoted)
+						),
+						Typed = Table.TransformColumnTypes(
+							Cleaned,
+							{
+								{"layer", type text},
+								{"table_name", type text},
+								{"rows_in", Int64.Type},
+								{"rows_out", Int64.Type},
+								{"rows_dropped", Int64.Type},
+								{"rule", type text}
+							}
+						)
+					in
+						Typed
+
+	annotation PBI_ResultType = Table
+	measure 'Rows Reaching Gold' = CALCULATE ( SUM ( PipelineLineage[rows_out] ), PipelineLineage[layer] = "Gold" )
+		lineageTag: 42bb4b9b-2f5b-53e2-9b47-7ceac75f7d09
+		formatString: #,0

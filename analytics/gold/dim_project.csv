@@ -1,0 +1,5 @@
+project_sk,project_name,is_mapped
+60184523-202d-4eba-9812-2bb8a3686bbc,Project A,True
+c09966cd-d84b-4b7d-9797-fb85c27b7382,Project B,True
+unmapped::Project C,Project C,False
+unmapped::Project D,Project D,False

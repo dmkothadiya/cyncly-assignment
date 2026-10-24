@@ -1,0 +1,52 @@
+table DimDate
+	lineageTag: a30bab53-3f9b-5577-8f7c-5d32228000d9
+
+	column Date
+		dataType: dateTime
+		formatString: yyyy-mm-dd
+		lineageTag: 1e218311-f75e-5c22-9a40-5c5ccdbdbbcd
+		isKey
+		summarizeBy: none
+		sourceColumn: Date
+
+	column Year
+		dataType: int64
+		lineageTag: 9e0b9e67-5d58-54b8-821f-6bb0704ff3ea
+		summarizeBy: none
+		sourceColumn: Year
+
+	column 'Month Number'
+		dataType: int64
+		lineageTag: d9dc121d-d8de-55d7-afd4-f78aec4d99b0
+		summarizeBy: none
+		sourceColumn: 'Month Number'
+
+	column Month
+		dataType: string
+		lineageTag: 192f0009-efa2-5cc7-9245-e98d2cdf6dc1
+		summarizeBy: none
+		sourceColumn: Month
+
+	column 'Month Key'
+		dataType: string
+		lineageTag: d7e976c2-3e20-591e-9ecb-84c0db41f253
+		summarizeBy: none
+		sourceColumn: 'Month Key'
+
+	partition DimDate = m
+		mode: import
+		source =
+					let
+						StartDate = #date(2024, 1, 1),
+						EndDate = #date(2025, 12, 31),
+						DayCount = Duration.Days(EndDate - StartDate) + 1,
+						DateList = List.Dates(StartDate, DayCount, #duration(1, 0, 0, 0)),
+						ToTable = Table.FromList(DateList, Splitter.SplitByNothing(), {"Date"}),
+						WithYear = Table.AddColumn(ToTable, "Year", each Date.Year([Date]), Int64.Type),
+						WithMonth = Table.AddColumn(WithYear, "Month Number", each Date.Month([Date]), Int64.Type),
+						WithName = Table.AddColumn(WithMonth, "Month", each Date.ToText([Date], "MMM"), type text),
+						WithKey = Table.AddColumn(WithName, "Month Key", each Date.ToText([Date], "yyyy-MM"), type text)
+					in
+						WithKey
+
+	annotation PBI_ResultType = Table

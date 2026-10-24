@@ -1,0 +1,16 @@
+layer,table_name,rows_in,rows_out,rows_dropped,rule
+Bronze,projects,2,2,0,"source sheet, every value preserved as text"
+Silver,projects,2,2,0,dropped rows without a project id or name
+Bronze,builds,350,350,0,"source sheet, every value preserved as text"
+Silver,builds,350,345,5,"dropped builds with no completion time, or ending before they started"
+Bronze,commits,164,164,0,"source sheet, every value preserved as text"
+Silver,commits,164,164,0,"dropped commits without an id, project or author date"
+Bronze,incidents,11,11,0,"source sheet, every value preserved as text"
+Silver,incidents,11,11,0,"dropped incidents without an id, start or resolution time"
+Silver,commit_links,164,152,12,dropped links to a build that finished before the commit was authored
+Gold,dim_project,2,4,0,source projects plus unmapped members referenced by incidents
+Gold,fact_deployment,345,345,0,"one row per completed build, the deployment proxy"
+Gold,fact_commit_link,152,152,0,commit x build associations that carry a lead time
+Gold,fact_incident,11,11,0,one row per incident with restore hours
+Gold,dora_service_month,345,9,0,aggregated 345 builds to 9 project-months
+Gold,dora_period_summary,9,1,0,rolled 9 project-months into one period row

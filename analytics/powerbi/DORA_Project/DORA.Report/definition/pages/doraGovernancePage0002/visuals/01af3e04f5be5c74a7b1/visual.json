@@ -1,0 +1,373 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/fabric/item/report/definition/visualContainer/2.13.0/schema.json",
+  "name": "01af3e04f5be5c74a7b1",
+  "position": {
+    "x": 30,
+    "y": 543,
+    "z": 20,
+    "width": 1860,
+    "height": 350,
+    "tabOrder": 20
+  },
+  "visual": {
+    "visualType": "tableEx",
+    "query": {
+      "queryState": {
+        "Values": {
+          "projections": [
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "project_name"
+                }
+              },
+              "queryRef": "DoraServiceMonth.project_name",
+              "nativeQueryRef": "project_name",
+              "displayName": "Project"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "reporting_month"
+                }
+              },
+              "queryRef": "DoraServiceMonth.reporting_month",
+              "nativeQueryRef": "reporting_month",
+              "displayName": "Month"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "deployment_count"
+                }
+              },
+              "queryRef": "DoraServiceMonth.deployment_count",
+              "nativeQueryRef": "deployment_count",
+              "displayName": "Builds"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "deployment_frequency_per_day"
+                }
+              },
+              "queryRef": "DoraServiceMonth.deployment_frequency_per_day",
+              "nativeQueryRef": "deployment_frequency_per_day",
+              "displayName": "DF / day"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "lead_time_median_hours"
+                }
+              },
+              "queryRef": "DoraServiceMonth.lead_time_median_hours",
+              "nativeQueryRef": "lead_time_median_hours",
+              "displayName": "Lead h"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "lead_time_sample_size"
+                }
+              },
+              "queryRef": "DoraServiceMonth.lead_time_sample_size",
+              "nativeQueryRef": "lead_time_sample_size",
+              "displayName": "Lead n"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "lead_time_status"
+                }
+              },
+              "queryRef": "DoraServiceMonth.lead_time_status",
+              "nativeQueryRef": "lead_time_status",
+              "displayName": "Lead status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "failed_deployments"
+                }
+              },
+              "queryRef": "DoraServiceMonth.failed_deployments",
+              "nativeQueryRef": "failed_deployments",
+              "displayName": "Failed"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "change_failure_rate_pct"
+                }
+              },
+              "queryRef": "DoraServiceMonth.change_failure_rate_pct",
+              "nativeQueryRef": "change_failure_rate_pct",
+              "displayName": "CFR %"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "mttr_median_hours"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_median_hours",
+              "nativeQueryRef": "mttr_median_hours",
+              "displayName": "MTTR h"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "mttr_sample_size"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_sample_size",
+              "nativeQueryRef": "mttr_sample_size",
+              "displayName": "MTTR n"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "mttr_status"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_status",
+              "nativeQueryRef": "mttr_status",
+              "displayName": "MTTR status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "mttr_all_incidents_hours"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_all_incidents_hours",
+              "nativeQueryRef": "mttr_all_incidents_hours",
+              "displayName": "All-cause h"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "mttr_all_incidents_sample"
+                }
+              },
+              "queryRef": "DoraServiceMonth.mttr_all_incidents_sample",
+              "nativeQueryRef": "mttr_all_incidents_sample",
+              "displayName": "All-cause n"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "median_build_minutes"
+                }
+              },
+              "queryRef": "DoraServiceMonth.median_build_minutes",
+              "nativeQueryRef": "median_build_minutes",
+              "displayName": "Build min"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "metrics_observed"
+                }
+              },
+              "queryRef": "DoraServiceMonth.metrics_observed",
+              "nativeQueryRef": "metrics_observed",
+              "displayName": "Observed"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "data_quality_status"
+                }
+              },
+              "queryRef": "DoraServiceMonth.data_quality_status",
+              "nativeQueryRef": "data_quality_status",
+              "displayName": "Status"
+            },
+            {
+              "field": {
+                "Column": {
+                  "Expression": {
+                    "SourceRef": {
+                      "Entity": "DoraServiceMonth"
+                    }
+                  },
+                  "Property": "status_reason"
+                }
+              },
+              "queryRef": "DoraServiceMonth.status_reason",
+              "nativeQueryRef": "status_reason",
+              "displayName": "What is missing, and why"
+            }
+          ]
+        }
+      },
+      "sortDefinition": {
+        "sort": [
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "DoraServiceMonth"
+                  }
+                },
+                "Property": "project_name"
+              }
+            },
+            "direction": "Ascending"
+          },
+          {
+            "field": {
+              "Column": {
+                "Expression": {
+                  "SourceRef": {
+                    "Entity": "DoraServiceMonth"
+                  }
+                },
+                "Property": "reporting_month"
+              }
+            },
+            "direction": "Ascending"
+          }
+        ]
+      }
+    },
+    "objects": {
+      "values": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "7D"
+                }
+              }
+            }
+          }
+        }
+      ],
+      "columnHeaders": [
+        {
+          "properties": {
+            "fontSize": {
+              "expr": {
+                "Literal": {
+                  "Value": "7D"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "visualContainerObjects": {
+      "title": [
+        {
+          "properties": {
+            "show": {
+              "expr": {
+                "Literal": {
+                  "Value": "true"
+                }
+              }
+            },
+            "text": {
+              "expr": {
+                "Literal": {
+                  "Value": "'dora_service_month: every published column at project x month grain'"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
