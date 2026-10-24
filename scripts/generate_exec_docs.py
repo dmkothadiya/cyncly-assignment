@@ -13,33 +13,6 @@ DOCS.mkdir(exist_ok=True)
 PRESENTATION.mkdir(exist_ok=True)
 
 
-def create_recommendation_pdf(path: Path) -> None:
-    c = canvas.Canvas(str(path), pagesize=letter)
-    c.setTitle('Executive Recommendation')
-    c.setAuthor('Cyncly Case Study')
-    c.setFont('Helvetica-Bold', 16)
-    c.drawString(72, 740, 'Executive Recommendation')
-    c.setFont('Helvetica', 11)
-    lines = [
-        'Decision: Re-scope and proceed with a controlled migration wave, not a full pause.',
-        'Rationale: repository migration is ahead of plan, but pipeline conversion is behind and security controls need stronger enforcement.',
-        'Immediate actions: enforce branch protections, separate legacy self-hosted runners, align metric definitions, and reduce developer friction through targeted workflow simplification.',
-        'Pause: pause only the migration wave that depends on non-compliant runners or disputed metrics. Do not pause the full transformation.',
-        'Security controls that cannot be compromised: least-privilege permissions, OIDC or secret-scoped access, branch protections, and dependency review.',
-        'Legacy runners: keep isolated exceptions for unsupported workloads with explicit owner, SLA, and review gates.',
-        'Metric reconciliation: align DORA definitions, document exclusions, and require a single authoritative metric dictionary.',
-        'Developer friction: measure time-to-first-green, retry rate, and workflow abandonment, then reduce by simplifying PR validation and limiting triggers.',
-        'Executive decisions: CTO, Security, Platform Engineering, and Product to approve the re-scoped migration wave and the metric governance model.'
-    ]
-    y = 700
-    for line in lines:
-        for wrapped_line in simpleSplit(line, 'Helvetica', 11, 468):
-            c.drawString(72, y, wrapped_line)
-            y -= 15
-        y -= 3
-    c.save()
-
-
 def create_strategy_pdf(path: Path) -> None:
     c = canvas.Canvas(str(path), pagesize=letter)
     c.setTitle('Strategy Package')
@@ -147,7 +120,6 @@ def create_presentation(path: Path) -> None:
     prs.save(path)
 
 
-create_recommendation_pdf(DOCS / 'EXECUTIVE_RECOMMENDATION.pdf')
 create_strategy_pdf(DOCS / 'STRATEGY_PACKAGE.pdf')
 create_presentation(PRESENTATION / 'EXECUTIVE_PRESENTATION.pptx')
-print('Generated strategy and recommendation PDFs and executive presentation.')
+print('Generated strategy PDF and executive presentation.')

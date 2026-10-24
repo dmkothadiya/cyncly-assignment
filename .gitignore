@@ -11,6 +11,7 @@ coverage/
 *.csv
 *.xlsx
 *.log
+*.zip
 .DS_Store
 node_modules/
 analytics/bronze/*.csv
@@ -23,4 +24,8 @@ analytics/dashboard/*.csv
 !analytics/dashboard/dora_dashboard_summary.csv
 !docs/EXECUTIVE_RECOMMENDATION.pdf
 !docs/STRATEGY_PACKAGE.pdf
+!docs/DEVOPS_STRATEGY_FOR_LEADERSHIP.pdf
 !presentation/EXECUTIVE_PRESENTATION.pptx
+scripts/generate_exec_docs.py
+scripts/generate_executive_recommendation_pdf.py
+scripts/generate_leadership_strategy_pdf.py

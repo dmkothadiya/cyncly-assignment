@@ -128,6 +128,7 @@ Assumption and limitation:
 - Validation evidence: `docs/VALIDATION_EVIDENCE.md`
 - AI usage statement: `docs/AI_USE_STATEMENT.md`
 - Executive recommendation PDF: `docs/EXECUTIVE_RECOMMENDATION.pdf`
+- Leadership strategy PDF: `docs/DEVOPS_STRATEGY_FOR_LEADERSHIP.pdf`
 - Executive presentation: `presentation/EXECUTIVE_PRESENTATION.pptx`
 
 ## Synthetic data notice
