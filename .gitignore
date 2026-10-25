@@ -26,7 +26,9 @@ analytics/powerbi/DORA_Project/**/diagramLayout.json
 analytics/powerbi/DORA_Project/**/definition/cultures/
 analytics/powerbi/DORA_Project/DORA.Report/.platform
 analytics/powerbi/DORA_Project/DORA.Report/StaticResources/
-scripts/generate_cto_briefing_pdf.py
+# Local tooling: the document and presentation generators are kept on the authoring
+# machine only. Their output (the deck, the reports) is versioned; the scripts are not.
+scripts/
 analytics/bronze/*.csv
 analytics/silver/*.csv
 analytics/silver/rejected_rows.json
@@ -54,6 +56,3 @@ analytics/powerbi/DORA.SemanticModel/
 !docs/STRATEGY_PACKAGE.pdf
 !docs/DEVOPS_STRATEGY_FOR_LEADERSHIP.pdf
 !presentation/EXECUTIVE_PRESENTATION.pptx
-scripts/generate_exec_docs.py
-scripts/generate_executive_recommendation_pdf.py
-scripts/generate_leadership_strategy_pdf.py

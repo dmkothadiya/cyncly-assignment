@@ -205,20 +205,14 @@ Assumption and limitation:
 - Executive presentation: `presentation/EXECUTIVE_PRESENTATION.pptx` — 13 slides across the
   four required parts (platform engineering, data engineering, strategy and leadership,
   executive recommendation) plus a closing Q&A page, with Cyncly branding, speaker notes
-  and a Power BI evidence slide. Regenerate it with:
+  and a Power BI evidence slide. Built from `presentation/assets/` by local tooling that is
+  kept out of version control (see `scripts/` in `.gitignore`).
 
-  ```powershell
-  python scripts/generate_executive_presentation.py
-  ```
-
-- Presenter's guide: `docs/EXECUTIVE_PRESENTATION_GUIDE.pdf` — 21 pages. The story, the
-  25-minute run of show, one page per slide (what is on it, what to say, what to point at,
-  what you will be asked), the objection bank, stakeholder lenses, a numbers/glossary
-  reference, a decision-capture template and an evidence map. Regenerate it with:
-
-  ```powershell
-  python scripts/generate_presentation_guide_pdf.py
-  ```
+- Presenter's guide: generated locally, not committed (all `*.pdf` are gitignored). 21
+  pages: the story, the 25-minute run of show, one page per slide (what is on it, what to
+  say, what to point at, what you will be asked), the objection bank, stakeholder lenses, a
+  numbers/glossary reference, a decision-capture template and an evidence map. It is built
+  from the deck and its thumbnails by the same local tooling.
 
 ## Synthetic data notice
 
