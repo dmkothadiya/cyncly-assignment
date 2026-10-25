@@ -56,3 +56,6 @@ analytics/powerbi/DORA.SemanticModel/
 !docs/STRATEGY_PACKAGE.pdf
 !docs/DEVOPS_STRATEGY_FOR_LEADERSHIP.pdf
 !presentation/EXECUTIVE_PRESENTATION.pptx
+# Scratch analysis scripts kept locally, never part of the deliverable.
+analytics/crosscheck_source.py
+.gitignore
