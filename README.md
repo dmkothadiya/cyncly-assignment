@@ -211,10 +211,11 @@ Assumption and limitation:
   python scripts/generate_executive_presentation.py
   ```
 
-- Presenter's guide: `docs/EXECUTIVE_PRESENTATION_GUIDE.pdf` — 21 pages. The story, the
-  25-minute run of show, one page per slide (what is on it, what to say, what to point at,
-  what you will be asked), the objection bank, stakeholder lenses, a numbers/glossary
-  reference, a decision-capture template and an evidence map. Regenerate it with:
+- Presenter's guide: generated locally, not committed (all `*.pdf` are gitignored). 21
+  pages: the story, the 25-minute run of show, one page per slide (what is on it, what to
+  say, what to point at, what you will be asked), the objection bank, stakeholder lenses, a
+  numbers/glossary reference, a decision-capture template and an evidence map. Build it to
+  `docs/EXECUTIVE_PRESENTATION_GUIDE.pdf` with:
 
   ```powershell
   python scripts/generate_presentation_guide_pdf.py
