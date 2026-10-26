@@ -37,6 +37,7 @@ public static class DoraMetricCalculator
 
         if (values.Length % 2 == 0)
         {
+            // Test changes
             return (values[midpoint - 1].TotalHours + values[midpoint].TotalHours) / 2d;
         }
 
